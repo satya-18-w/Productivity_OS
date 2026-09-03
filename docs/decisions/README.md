@@ -33,4 +33,13 @@ Do not create an ADR for every tool, dependency, version, or configuration choic
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| —   | none yet | — | — |
+| [0001](0001-modular-monolith-and-deployment-shape.md) | Modular Monolith & Deployment Shape | Accepted | 2026-09-03 |
+| [0002](0002-backend-http-api-and-module-architecture.md) | Backend HTTP/API & Module Architecture | Accepted | 2026-09-03 |
+| [0003](0003-postgresql-persistence.md) | PostgreSQL Persistence | Accepted | 2026-09-03 |
+| [0004](0004-authentication-and-account-isolation.md) | Authentication & Account Isolation | Accepted | 2026-09-03 |
+| [0005](0005-time-and-timezone-model.md) | Time & Timezone Model | Accepted | 2026-09-03 |
+| [0006](0006-frontend-architecture.md) | Frontend Architecture | Accepted | 2026-09-03 |
+| [0007](0007-testing-and-local-development.md) | Testing & Local Development | Accepted | 2026-09-03 |
+
+ADR-0008 (production hosting / deployment) is intentionally not yet written — it
+follows a free-tier validation spike.

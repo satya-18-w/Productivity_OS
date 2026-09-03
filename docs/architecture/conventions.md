@@ -1,34 +1,40 @@
 # Engineering Conventions
 
-> Living document. It records the conventions actually in force. Conventions not yet
-> decided are marked as such and are settled by the milestone that first needs them —
-> recorded here, and in an ADR if the choice has lasting consequences.
+> Living document. It records idiomatic implementation guidance — how to write code
+> that fits this codebase. Architectural decisions and their rationale live in
+> `docs/decisions/` (ADRs); this file points to them rather than repeating them.
 
-## In force now (from the approved product baseline)
+## Where the rules live
 
-- **Spec before implementation.** No milestone is implemented without an approved
-  `spec.md` and `plan.md` (`docs/product/principles.md` E4).
-- **Forward-only migrations.** Schema changes only move forward. A mistake is corrected
-  by a new migration, never by editing one that has shipped (E4).
-- **Account scoping is mandatory.** Every query is scoped to the authenticated account
-  (`docs/requirements/v1.md` N3).
-- **Unambiguous time.** Instants are stored without ambiguity; dates and weeks are
-  resolved in the account's timezone (`v1.md` N4).
-- **Deterministic V1.** No heuristic or AI-driven behaviour in V1 (P6).
-- **Justify dependencies.** Every dependency beyond the standard library and PostgreSQL
-  is justified in the `plan.md` that introduces it; a lasting one also gets an ADR (E3).
+| Topic | Owned by |
+|-------|----------|
+| Deployment shape, single-origin, no distributed infrastructure | ADR-0001 |
+| Go toolchain, module/package structure, the dependency rule, HTTP layer, API & error contract, validation stance | ADR-0002 |
+| pgx driver, `sqlc`, migrations (forward-only), transaction boundaries | ADR-0003 |
+| Sessions, password-hashing algorithm, account-scoping mechanism, no RLS in V1 | ADR-0004 |
+| Timezone storage and all date / week bucketing | ADR-0005 |
+| Frontend stack and single-origin asset serving | ADR-0006 |
+| Local dev topology, testing approach, CI | ADR-0007 |
+| Spec-before-code, the eight-stage workflow | `CLAUDE.md`; principle E4 |
+| ₹0 filter, "boring tech", justify every dependency | `docs/product/principles.md` E1, E3 |
 
-## To be established in Milestone M1
+## Idioms to be established in Milestone M1
 
-Not yet decided. Filled in here when M1 is planned:
+Filled in here when the M1 skeleton lands. These are style choices *within* the ADRs,
+not new decisions:
 
-- Go module and package layout
-- Error handling and wrapping idiom
-- Logging approach
-- HTTP handler and routing structure
-- Test layout, naming, and how to run a single test
-- Formatting and linting toolchain, and how it is run
+- Error creation and wrapping idiom — how a `code` / `message` / `fields` error is
+  built and propagated to the central writer defined in ADR-0002.
+- Structured logging (`log/slog`): field names, levels, what every request logs.
+- Naming: packages, exported module interfaces, `sqlc` query files and methods.
+- Internal module layering in practice (`service` / `store` / handler) — the shape
+  ADR-0002 leaves to convention.
+- Test file layout, test naming, and how to run a single test (approach set by
+  ADR-0007).
+- `gofmt` / `golangci-lint` configuration and how it is run locally.
+- Frontend: component structure, styling approach, and any libraries added (per
+  ADR-0006, only on demonstrated need).
 
 ## Commands
 
-To be added when the build / test / lint toolchain exists (Milestone M1).
+To be added when the M1 `Makefile` exists (see ADR-0007 for the intended entry points).
