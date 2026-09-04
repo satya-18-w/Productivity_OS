@@ -1,0 +1,11 @@
+/* ============================================================================
+   Productivity OS — stylesheet entry point
+   Import order matters: tokens → base → legacy feature CSS → new primitives.
+   The primitives layer is last so it can rely on tokens and, where needed,
+   override stale legacy rules during the migration.
+   ========================================================================== */
+@import "./tokens.css";
+@import "./base.css";
+@import "../styles.css";      /* legacy feature/component CSS — being migrated */
+@import "./primitives.css";
+@import "../shell/shell.css"; /* app shell (D3) */

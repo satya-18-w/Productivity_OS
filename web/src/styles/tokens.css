@@ -1,0 +1,290 @@
+/* ============================================================================
+   Productivity OS — Design Tokens (canonical)
+   ----------------------------------------------------------------------------
+   This is the single source of truth for design tokens in the frontend.
+   Values are governed by docs/design/design-system.md (§3). Screen/feature CSS
+   and the UI primitives in src/components/** consume these — never raw values.
+
+   RATIFIED (docs/design/design-system.md §6.1):
+     D1  primary/action colour = deep forest green (was indigo)
+     D2  category palette is a visual/semantic identification system only
+     D5  warmer off-white / paper neutrals
+     D9  Inter font stack only — no second typeface
+
+   PROVISIONAL — pending token-extraction pass "T1" (design-system.md §6.2):
+     every hex value below, and the px thresholds in breakpoints.ts.
+     These are the DIRECTION values documented in design-system.md §3, used as
+     the closest temporary implementation. They are NOT ratified canonical
+     values. Do not treat them as final. Tracked in the stage report.
+
+   PENDING D3 (app shell) — --sidebar-w / --rail-w are indicative only and must
+   not be treated as final sidebar/right-rail dimensions.
+   ========================================================================== */
+
+/* --- font families (D9: Inter stack only) ------------------------------- */
+:root {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code",
+    Menlo, Consolas, monospace;
+
+  /* D9: no separate display/heading face — these alias the one stack so
+     component code can express intent without implying a second typeface. */
+  --font-display: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --font-body: var(--font-sans);
+}
+
+/* --- colour: light (default) ----------------------------------------------
+   PROVISIONAL values from design-system.md §3.1 — pending T1. */
+:root {
+  /* neutral / surface — D5 warmer paper direction */
+  --bg: #f6f7f4;              /* page background */
+  --surface: #ffffff;         /* cards, panels, rows */
+  --surface-2: #f2f3ef;       /* inset areas, wells, table zebra */
+  --surface-hover: #edeee9;   /* row/control hover */
+  --elevated: #ffffff;        /* elevated surface (menus, dialogs) */
+  --sidebar-bg: #fbfbf9;      /* left sidebar (shell prep — see D3) */
+  --border: #e9e9e3;          /* hairlines, card edges */
+  --border-strong: #d7d7cf;   /* inputs, dividers needing weight */
+
+  /* text */
+  --text: #1c241d;            /* headings, primary text (warm near-black) */
+  --text-secondary: #55605a;  /* body, descriptions */
+  --text-muted: #8a938c;      /* meta, timestamps, axis labels, eyebrows */
+
+  /* brand / primary action — D1 forest green (replaces indigo) */
+  --brand: #1f5132;
+  --brand-hover: #183f27;
+  --brand-soft: #e7f0e9;      /* active nav pill bg, subtle fills */
+  --on-brand: #ffffff;        /* text/icon on primary */
+
+  /* legacy aliases — existing feature CSS (.btn, .nav, .tl-*, …) still uses
+     --accent*. Keep them pointing at the brand so that layer inherits D1
+     with no per-rule edits. Do NOT introduce new uses of --accent*. */
+  --accent: var(--brand);
+  --accent-hover: var(--brand-hover);
+  --accent-soft: var(--brand-soft);
+  --on-accent: var(--on-brand);
+
+  /* semantic */
+  --success: #1c8a4e;
+  --success-soft: #e4f2ea;
+  --warning: #c9821f;
+  --warning-soft: #f8efe0;
+  --danger: #e04b4b;
+  --danger-soft: #fbe9e9;
+  --info: #3b82f6;
+  --info-soft: #e7effd;
+  --goal: #8b5cf6;            /* goal accent (violet) */
+  --goal-soft: #efe9fd;
+
+  /* focus ring — brand (VP8) */
+  --focus: var(--brand);
+
+  /* -------------------------------------------------------------------------
+     Category / data palette — D2.
+     VISUAL / SEMANTIC IDENTIFICATION ONLY. Category colour must never drive
+     business logic, validation, filtering semantics, ordering, totals, or any
+     stored product meaning (design-system.md §3.1, requirements §2).
+     The names below mirror the sample data in the references; a real category
+     is assigned a hue from this pool by presentation code, not the domain.
+     ---------------------------------------------------------------------- */
+  --cat-personal: #e0679a;
+  --cat-work: #3b82f6;
+  --cat-study: #8b5cf6;
+  --cat-health: #22a565;
+  --cat-projects: #e6a532;
+  --cat-ideas: #ee7326;
+  --cat-finance: #1f5e3a;
+  --cat-other: #9aa0a6;       /* also the "Uncategorized" bucket */
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 150ms;
+  --dur-slow: 240ms;
+}
+
+/* --- colour: dark ------------------------------------------------------------
+   PROVISIONAL — design-system.md gives no dark palette yet; these follow the
+   existing [data-theme] pattern and are extracted in the same T1 pass. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #0d0f0d;
+    --surface: #161816;
+    --surface-2: #1d201d;
+    --surface-hover: #232622;
+    --elevated: #1d201d;
+    --sidebar-bg: #121412;
+    --border: #2a2d29;
+    --border-strong: #3b3f39;
+
+    --text: #eceee9;
+    --text-secondary: #a8b0a8;
+    --text-muted: #767e75;
+
+    --brand: #5fb98c;
+    --brand-hover: #74c79c;
+    --brand-soft: #17271d;
+    --on-brand: #0c140f;
+
+    --success: #45c98a;
+    --success-soft: #10261c;
+    --warning: #e0a94a;
+    --warning-soft: #2a2113;
+    --danger: #f0716d;
+    --danger-soft: #2c1414;
+    --info: #6aa5f8;
+    --info-soft: #14243c;
+    --goal: #a78bfa;
+    --goal-soft: #201a3a;
+
+    --cat-personal: #ec7fa9;
+    --cat-work: #5b9bf8;
+    --cat-study: #a78bfa;
+    --cat-health: #3fca8a;
+    --cat-projects: #eec06a;
+    --cat-ideas: #f5945c;
+    --cat-finance: #4f9d74;
+    --cat-other: #a5abb2;
+  }
+}
+
+/* Explicit opt-in dark (same values) — kept in sync with the media block. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0d0f0d;
+  --surface: #161816;
+  --surface-2: #1d201d;
+  --surface-hover: #232622;
+  --elevated: #1d201d;
+  --sidebar-bg: #121412;
+  --border: #2a2d29;
+  --border-strong: #3b3f39;
+
+  --text: #eceee9;
+  --text-secondary: #a8b0a8;
+  --text-muted: #767e75;
+
+  --brand: #5fb98c;
+  --brand-hover: #74c79c;
+  --brand-soft: #17271d;
+  --on-brand: #0c140f;
+
+  --success: #45c98a;
+  --success-soft: #10261c;
+  --warning: #e0a94a;
+  --warning-soft: #2a2113;
+  --danger: #f0716d;
+  --danger-soft: #2c1414;
+  --info: #6aa5f8;
+  --info-soft: #14243c;
+  --goal: #a78bfa;
+  --goal-soft: #201a3a;
+
+  --cat-personal: #ec7fa9;
+  --cat-work: #5b9bf8;
+  --cat-study: #a78bfa;
+  --cat-health: #3fca8a;
+  --cat-projects: #eec06a;
+  --cat-ideas: #f5945c;
+  --cat-finance: #4f9d74;
+  --cat-other: #a5abb2;
+}
+
+/* --- typography scale ------------------------------------------------------
+   Sizes/weights UNCHANGED from the prior system (design-system.md §3.2 keeps
+   the scale). Raw --fs-* steps are retained for the legacy layer; the
+   semantic aliases below are what new component code should use. */
+:root {
+  --fs-xs: 0.75rem;      /* 12 */
+  --fs-sm: 0.8125rem;    /* 13 */
+  --fs-base: 0.9375rem;  /* 15 */
+  --fs-md: 1.0625rem;    /* 17 */
+  --fs-lg: 1.375rem;     /* 22 */
+  --fs-xl: 1.75rem;      /* 28 */
+
+  /* semantic type steps */
+  --fs-display: var(--fs-xl);   /* page H1 */
+  --fs-heading: var(--fs-lg);   /* major section H2 */
+  --fs-title: var(--fs-md);     /* card / widget H3 */
+  --fs-body: var(--fs-base);
+  --fs-small: var(--fs-sm);
+  --fs-caption: var(--fs-xs);
+
+  /* line heights */
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-normal: 1.55;
+
+  /* weights */
+  --fw-regular: 400;
+  --fw-medium: 550;
+  --fw-semibold: 600;
+  --fw-bold: 680;
+
+  /* letter-spacing for large / all-caps text */
+  --ls-tight: -0.02em;
+  --ls-eyebrow: 0.06em;
+}
+
+/* --- spacing (4px base — UNCHANGED) ------------------------------------- */
+:root {
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+}
+
+/* --- radius (UNCHANGED) ------------------------------------------------- */
+:root {
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --radius-tile: var(--radius-md); /* category / block glyph tiles */
+}
+
+/* --- elevation (UNCHANGED — restrained) ------------------------------- */
+:root {
+  --shadow-sm: 0 1px 2px rgba(20, 20, 30, 0.05);
+  --shadow-md: 0 4px 14px -4px rgba(20, 20, 30, 0.12), 0 1px 3px rgba(20, 20, 30, 0.06);
+  --shadow-lg: 0 18px 45px -12px rgba(20, 20, 30, 0.22);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 20px 50px -12px rgba(0, 0, 0, 0.65);
+  }
+}
+:root[data-theme="dark"] {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 50px -12px rgba(0, 0, 0, 0.65);
+}
+
+/* --- layout ---------------------------------------------------------------
+   D3 approved (design-system.md §3.6). `--content-max` no longer applies to
+   authenticated screens — it is kept for the centered auth screens only.
+   Shell dimensions are PROVISIONAL pending T1. */
+:root {
+  --content-max: 760px;        /* auth screens (/login, /register) only */
+  --gutter: var(--sp-5);
+
+  --sidebar-w: 248px;          /* PROVISIONAL (T1) — expanded sidebar */
+  --sidebar-w-collapsed: 56px; /* PROVISIONAL (T1) — icon-only sidebar */
+  --rail-w: 320px;             /* PROVISIONAL (T1) — right contextual rail */
+  --topbar-h: 52px;            /* PROVISIONAL (T1) — mobile top bar */
+
+  --z-sidebar: 30;
+  --z-drawer: 50;
+}

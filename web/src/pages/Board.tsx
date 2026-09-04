@@ -85,7 +85,8 @@ export function Board() {
                 onDrop={(e) => onDrop(e, state)}
               >
                 <div className="board-col-head">
-                  {LABELS[state]} <span className="muted">{tasks.length}</span>
+                  <span>{LABELS[state]}</span>
+                  <span className="count">{tasks.length}</span>
                 </div>
                 {tasks.map((task) => (
                   <TaskCard

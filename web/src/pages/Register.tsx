@@ -39,7 +39,11 @@ export function Register() {
   return (
     <div className="center">
       <form className="card" onSubmit={submit}>
-        <h1>Create your account</h1>
+        <div className="auth-brand"><span className="brand">Productivity OS</span></div>
+        <div>
+          <h1>Create your account</h1>
+          <p className="secondary">Plan, track, and review where your time goes.</p>
+        </div>
         {error && <p className="error" role="alert">{error}</p>}
         <label>
           Email

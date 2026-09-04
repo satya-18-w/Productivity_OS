@@ -89,7 +89,33 @@ func (s *service) Comparison(ctx context.Context, accountID uuid.UUID, date time
 		return DayComparison{}, fmt.Errorf("resolve account zone: %w", err)
 	}
 	start, end := timezone.DayWindow(date, loc)
+	cmp, err := s.comparisonForWindow(ctx, accountID, start, end)
+	if err != nil {
+		return DayComparison{}, err
+	}
+	cmp.Date = date.String()
+	return cmp, nil
+}
 
+// ComparisonRange sums planned/actual per category over the inclusive date range
+// [from, to] in the account's timezone (v1.md §13; also the weekly-review
+// reference).
+func (s *service) ComparisonRange(ctx context.Context, accountID uuid.UUID, from, to timezone.Date) (DayComparison, error) {
+	loc, err := s.zone.Zone(ctx, accountID)
+	if err != nil {
+		return DayComparison{}, fmt.Errorf("resolve account zone: %w", err)
+	}
+	start, _ := timezone.DayWindow(from, loc)
+	_, end := timezone.DayWindow(to, loc)
+	cmp, err := s.comparisonForWindow(ctx, accountID, start, end)
+	if err != nil {
+		return DayComparison{}, err
+	}
+	cmp.From, cmp.To = from.String(), to.String()
+	return cmp, nil
+}
+
+func (s *service) comparisonForWindow(ctx context.Context, accountID uuid.UUID, start, end time.Time) (DayComparison, error) {
 	blocks, err := s.blocksOverlapping(ctx, accountID, start, end)
 	if err != nil {
 		return DayComparison{}, err

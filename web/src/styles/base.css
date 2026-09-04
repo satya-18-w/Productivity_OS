@@ -1,0 +1,121 @@
+/* ============================================================================
+   Productivity OS — Base / reset
+   Element-level defaults. Consumes tokens.css. No component styling here.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-feature-settings: "cv11", "ss01";
+  font-variation-settings: normal;
+}
+
+/* VP9 — the page must never scroll sideways. `clip` (not `hidden`) keeps
+   position: sticky working while still preventing horizontal scroll. Wide
+   content is expected to scroll inside its own container. */
+body {
+  overflow-x: clip;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  color: var(--text);
+}
+h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+  font-weight: var(--fw-bold);
+}
+h2 {
+  font-family: var(--font-heading);
+  font-size: var(--fs-heading);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+  font-weight: var(--fw-semibold);
+}
+h3 {
+  font-family: var(--font-heading);
+  font-size: var(--fs-title);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  font-weight: var(--fw-semibold);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+}
+
+/* VP8 — always-visible focus indicator. Keyboard users only (`:focus-visible`)
+   so pointer clicks stay quiet. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+::selection {
+  background: color-mix(in oklab, var(--brand) 22%, transparent);
+}
+
+/* VP8 — respect reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visually-hidden helper for accessible labels that shouldn't render. */
+.ui-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

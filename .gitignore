@@ -19,3 +19,5 @@ coverage.*
 *.swp
 .idea/
 .vscode/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

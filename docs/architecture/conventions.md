@@ -33,8 +33,89 @@ not new decisions:
   ADR-0007).
 - `gofmt` / `golangci-lint` configuration and how it is run locally.
 - Frontend: component structure, styling approach, and any libraries added (per
-  ADR-0006, only on demonstrated need).
+  ADR-0006, only on demonstrated need). — **established, see "Frontend" below.**
+
+## Frontend
+
+Established during the design-system foundation stage (first frontend implementation).
+
+### Styling
+
+- **One visual system.** Its source of truth is `docs/design/design-system.md`
+  (tokens + component contracts) and `docs/design/visual-principles.md`.
+- **Plain CSS + CSS custom properties.** No CSS-in-JS, no CSS Modules, no utility
+  framework. Layers live in `web/src/styles/` — `tokens.css` (canonical tokens),
+  `base.css` (reset), `primitives.css` (`ui-` component styles), and the legacy
+  `web/src/styles.css` (feature classes still in use, migrated screen by screen).
+  `web/src/styles/README.md` has the detail.
+- Components consume **tokens**, never raw values. Adding a colour / spacing / radius /
+  shadow / type step means adding a token and getting it approved (project `CLAUDE.md`
+  → "Design System Changes").
+- Ratified design decisions D1–D6, D8–D10 are applied; several token *values* remain
+  `PROVISIONAL` pending the "T1" extraction pass (design-system.md §6.2).
+
+### App shell (D3 — approved 2026-09-04)
+
+- **Three-region shell**: left sidebar (primary nav + brand + user chip) · main content
+  (`PageHeader` + body) · right contextual rail (per-screen; a screen may have none).
+  CSS Grid. Replaces `web/src/AuthLayout.tsx`. Build spec: `docs/design/screens/app-shell.md`.
+- Auth screens (`/login`, `/register`) do **not** use the shell — centered narrow layout.
+- Top bar carries a theme toggle + user avatar only. **No global search, no notification
+  bell** (not V1).
+- Responsive shed order (D4): right rail → sidebar labels (icon-only) → sidebar drawer.
+  Main content + the primary action survive at every width; the page never scrolls sideways.
+
+### Routing (D10 — approved 2026-09-04)
+
+React Router, client-side. Authenticated routes render inside the app shell:
+
+| Route | Screen |
+|---|---|
+| `/` | Timeline (today) — **the landing screen; there is no dashboard** |
+| `/timeline` | Timeline (Day / Agenda views via `?view=`) |
+| `/tasks` | Tasks (list) |
+| `/board` | Board (Kanban) — separate route, same task model as `/tasks` |
+| `/habits` | Habits |
+| `/goals` | Goals |
+| `/categories` | Categories |
+| `/reports` | Reports (the five fixed §13 reports) |
+| `/reviews/daily` · `/reviews/weekly` | Daily / Weekly review |
+| `/account` | Account |
+| `/export` | Data export |
+| `/login` · `/register` | Auth (no shell) |
+
+Unauthenticated → `/login`; authenticated on an auth route → `/`. Unknown route → `/`.
+Routes not listed here are **not** V1 (no `/dashboard`, `/notes`, `/calendar`,
+`/timeline/week`, `/timeline/month`).
+
+### Component structure
+
+```
+web/src/components/
+  ui/            — presentation primitives (Button, Card, Input, Dialog, Tabs, …)
+  layout/        — layout primitives (Stack, Inline, Container, Section, PageHeader)
+  productivity/  — domain-shaped presentation (StatCard, ListRow, StatusBadge, …)
+```
+
+Foundation components are **presentation-only** — no data fetching, no business rules.
+Feature screens compose them and own state. Each subfolder has a barrel `index.ts`;
+`components/index.ts` re-exports all three.
+
+### Testing
+
+- **Vitest + @testing-library/react** (jsdom), added here as the ADR-0007 milestone
+  decision ("the frontend grows enough logic to warrant its own unit tests → add a
+  frontend test runner"). Config lives in `web/vite.config.ts`; setup in
+  `web/src/test/setup.ts`.
+- Scope: component **behaviour and accessibility** (roles, labels, keyboard, focus,
+  disabled) — not visual appearance. Run with `pnpm test` (in `web/`).
+- Test files sit next to the component as `*.test.tsx`.
+- CI (ADR-0007) currently runs the frontend typecheck + build; adding `pnpm test` to
+  that workflow is a follow-up.
+- Real-browser verification stays per-milestone (ADR-0007) and is done ad hoc with
+  Playwright, not committed as a suite.
 
 ## Commands
 
 To be added when the M1 `Makefile` exists (see ADR-0007 for the intended entry points).
+Frontend, from `web/`: `pnpm dev`, `pnpm build`, `pnpm typecheck`, `pnpm test`.

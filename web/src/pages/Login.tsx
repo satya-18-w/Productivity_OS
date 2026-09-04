@@ -32,7 +32,11 @@ export function Login() {
   return (
     <div className="center">
       <form className="card" onSubmit={submit}>
-        <h1>Log in</h1>
+        <div className="auth-brand"><span className="brand">Productivity OS</span></div>
+        <div>
+          <h1>Welcome back</h1>
+          <p className="secondary">Log in to plan your day.</p>
+        </div>
         {error && <p className="error" role="alert">{error}</p>}
         <label>
           Email

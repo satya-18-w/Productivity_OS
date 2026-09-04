@@ -409,25 +409,97 @@ M1–M3): browser click-through + first CI run.
 
 # MILESTONE 5 — Goals
 
-Covers `v1.md §10`. No blocking open questions.
+Covers `v1.md §10`. Depends on M1. No open questions. The smallest milestone.
 
-- [ ] `internal/goal` — create/edit/delete; four-state progress (not started / in progress / achieved / abandoned), set manually; list; migration; isolation tests
-- [ ] API + frontend: goal list, create/edit, progress control
-- ✅ **CP** create a goal, set each progress state, edit, delete
-- ✅ **CP** isolation + CI green
+**Decisions:** new `internal/goals` module. Progress states `NOT_STARTED` (default) ·
+`IN_PROGRESS` · `ACHIEVED` · `ABANDONED`. Title 1–200, description ≤ 5000, target date
+optional plain `date`. No linkage to any other entity (`v1.md §10`).
+
+## Phase 1 — Goals backend + API  ✅ COMPLETE
+
+- [x] 1.1  Migration `000006_goals` — `goals` (+ `description`, `target_date date`, `progress` CHECK/default `NOT_STARTED`, `created_at`/`updated_at`); index `(account_id, created_at DESC)`
+- [x] 1.2  `internal/goals` module + `Service`; `queries.sql` → `goalsdb` (5th sqlc block)
+- [x] 1.3  `CreateGoal` (→ `NOT_STARTED`), `UpdateGoal`, `SetProgress` (validated), `DeleteGoal`, `ListGoals` (newest first)
+- [x] 1.4  HTTP: `GET /api/goals`, `POST /api/goals`, `PATCH /api/goals/{id}`, `PUT /api/goals/{id}/progress`, `DELETE /api/goals/{id}` — auth (+ CSRF on writes)
+- [x] 1.5  13 tests — lifecycle (create → cycle all 4 states → edit → delete), validation, isolation (update/progress/delete), HTTP (201 / 400 / 204 / 404)
+- [x] **CP 1** create a goal, cycle all four progress states, edit, delete (curl + tests); isolation green
+
+## Phase 2 — Frontend: Goals page + M5 wrap  ✅ COMPLETE
+
+- [x] 2.1  `api.ts` goal methods + types; `Goals` page at `/goals`; nav gains "Goals"
+- [x] 2.2  Goal list — each a card: title, `🎯 target date`, description, colour-coded progress chip + a progress `<select>`; create / edit / delete via `GoalForm`
+- [x] 2.3  `docs/security-review-m5.md` — **no findings**. Full regression green (11 Go packages, `pnpm typecheck` + `vite build`, `sqlc diff`, lint)
+- [x] **CP 2** `/goals` serves the SPA; create → `NOT_STARTED`, set progress → `ACHIEVED` verified via curl; full suite + review green
+
+### M5 done when
+
+CP 1–2 met · a person can create, edit, delete goals and set any of the four progress
+states · isolation tests green · CI green.
+
+**M5 status: complete.** Pending sign-off (as M1–M4): browser click-through + first CI run.
 
 ---
 
 # MILESTONE 6 — Daily and weekly reviews
 
-Covers `v1.md §11–§12`. Depends on M2, M3, M4. **Resolve first:** Q1 (daily prompts),
-Q2 (weekly prompts), Q9, Q10.
+Covers `v1.md §11, §12`. Depends on M2, M3, M4. Q1, Q2, Q9, Q10 resolved in `v1.md`
+(Q1/Q2 with **placeholder prompt wording** — the product owner replaces the text).
 
-- [ ] `internal/review` — daily review per date + weekly review per ISO week; fixed prompt sets; free-text answers; create/edit/view; migration; isolation tests
-- [ ] Reference panel — reuse M2 totals, M4 completions, M3 DONE-count read-only, through those modules' public interfaces
-- [ ] API + frontend: daily + weekly review forms and past views with reference panels
-- ✅ **CP** complete a daily review with that day's totals shown; edit it; view a past one
-- ✅ **CP** complete a weekly review for an ISO week with the week's figures; isolation + CI green
+## M6 decisions
+
+| Topic | Default | Rationale / source |
+|---|---|---|
+| Module | New `internal/reviews` — owns only the review answers + the fixed prompt sets. | ADR-0002. |
+| Prompt sets | Go constants (`dailyPrompts`, `weeklyPrompts`), each `{key, text}`. Not in the DB. Q1/Q2 wording is placeholder. | `v1.md §11/§12` ("fixed, non-editable, defined in the review SPEC"). |
+| Answer storage | `answers jsonb` — a `{promptKey: text}` map, saved/loaded whole. | Answers are only ever read/written as a full review. |
+| Identity | daily → `UNIQUE(account_id, on_date)`; weekly → `UNIQUE(account_id, iso_year, iso_week)`. | `v1.md`. |
+| Reference data | **Assembled by the frontend** from range-capable read endpoints — not by the reviews module. Daily reuses `/api/comparison?date=` + `/api/habits?date=`. Weekly uses new range endpoints (below), which M7 also needs. | Keeps `reviews` a thin, well-bounded module; avoids `reviews` composing four other services. |
+| "Tasks that entered DONE in a week" (Q10) | Distinct tasks with ≥ 1 `→ DONE` transition whose `at` is in the ISO-week instant range (account tz). | Q10 resolution. |
+| Editing | A `PUT` upserts the whole answer set. "Complete" and "edit" are the same operation. Empty answers allowed (a partially-filled review). | `v1.md §11` ("edit a previously completed review"). |
+
+## Phase 1 — Range read methods (foundation for M6 + M7)
+
+- [ ] 1.1  `timeline`: `ComparisonRange(ctx, accountID, from, to Date)` (per-category planned/actual/diff over `[from 00:00, to+1 00:00)` in account tz) + `GET /api/comparison` accepts `?from=&to=` as an alternative to `?date=`
+- [ ] 1.2  `habits`: `CompletionCountsInRange(ctx, accountID, from, to Date)` → `[]{habitID, name, count}` (active + archived, so a week's history is complete) + `GET /api/habits/range?from=&to=`
+- [ ] 1.3  `tasks`: `DoneCountInRange(ctx, accountID, fromInstant, toInstant time.Time)` → distinct tasks with a `→ DONE` in range + `GET /api/tasks/throughput?from=&to=`
+- [ ] 1.4  Tests — range totals across a DST boundary; distinct-task DONE count (bounce in/out counts once); isolation
+- ✅ **CP 1** range endpoints return correct figures over a multi-day window (curl + tests)
+
+## Phase 2 — Reviews module (schema + service)
+
+- [ ] 2.1  Migration `000007_reviews` — `daily_reviews` (id, account_id fk, on_date, answers jsonb, created_at, updated_at; `UNIQUE(account_id, on_date)`) + `weekly_reviews` (…, iso_year, iso_week, …; `UNIQUE(account_id, iso_year, iso_week)`)
+- [ ] 2.2  `internal/reviews` module + `Service`; prompt-set constants; `queries.sql` → `reviewsdb` (6th sqlc block)
+- [ ] 2.3  `GetDaily(date)` / `SaveDaily(date, answers)` (upsert), `GetWeekly(year, week)` / `SaveWeekly(year, week, answers)`; unknown prompt keys in an answer set are dropped (only known keys stored)
+- [ ] 2.4  Tests — save + reload; upsert overwrites; unknown keys dropped; isolation
+- ✅ **CP 2** save a daily review, reload it, edit it; isolation green
+
+## Phase 3 — Reviews HTTP API
+
+- [ ] 3.1  `GET /api/reviews/daily?date=` → `{ prompts:[{key,text}], answers:{key:text} }`; `PUT /api/reviews/daily?date=` (body `{answers}`)
+- [ ] 3.2  `GET`/`PUT /api/reviews/weekly?year=&week=` — same shape
+- [ ] 3.3  HTTP tests — get empty → prompts + `{}`; put → 204; get → answers; bad date/week → 400; isolation
+- ✅ **CP 3** daily + weekly review round-trip via curl
+
+## Phase 4 — Frontend: Reviews page
+
+- [ ] 4.1  `api.ts` review + range methods; `Reviews` page at `/reviews`; nav gains "Reviews"
+- [ ] 4.2  Daily / Weekly toggle; date picker (daily) or week stepper (weekly); a prompt + `<textarea>` per prompt; Save
+- [ ] 4.3  Reference panel — daily: time-by-category + habits done that day; weekly: time-by-category, habit counts, tasks → DONE that week
+- [ ] 4.4  Responsive 375 / 1280
+- ✅ **CP 4** complete a daily review with the day's totals shown; view/edit a past one; same for a weekly review
+
+## Phase 5 — M6 wrap
+
+- [ ] 5.1  Full regression — `go test ./...`, `pnpm typecheck` + `vite build`, `sqlc diff`, lint
+- [ ] 5.2  `docs/security-review-m6.md` — isolation review of `daily_reviews` + `weekly_reviews` and the new range endpoints
+- [ ] 5.3  Confirm CI covers the new module
+- ✅ **CP 5** full suite + review green
+
+### M6 done when
+
+CP 1–5 met · a person can complete, edit, and view daily reviews (per date) and weekly
+reviews (per ISO week), each with that period's totals shown for reference · isolation
+tests green · CI green.
 
 ---
 

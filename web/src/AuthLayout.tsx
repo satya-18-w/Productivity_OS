@@ -23,10 +23,11 @@ export function AuthLayout() {
           <NavLink to="/" end>Timeline</NavLink>
           <NavLink to="/board">Board</NavLink>
           <NavLink to="/habits">Habits</NavLink>
+          <NavLink to="/goals">Goals</NavLink>
           <NavLink to="/categories">Categories</NavLink>
           <NavLink to="/account">Account</NavLink>
         </div>
-        <button className="link" onClick={logout}>Log out</button>
+        <button className="btn btn-ghost nav-logout" onClick={logout}>Log out</button>
       </nav>
       <main className="app-main">
         <Outlet />

@@ -8,7 +8,8 @@ interface AuthState {
   setAccount: (a: Account | null) => void;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+// Exported so tests can supply a synthetic auth state without a network round-trip.
+export const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);

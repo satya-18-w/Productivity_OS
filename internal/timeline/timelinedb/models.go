@@ -25,6 +25,17 @@ type Category struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
+type Goal struct {
+	ID          uuid.UUID
+	AccountID   uuid.UUID
+	Title       string
+	Description pgtype.Text
+	TargetDate  pgtype.Date
+	Progress    string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Habit struct {
 	ID         uuid.UUID
 	AccountID  uuid.UUID

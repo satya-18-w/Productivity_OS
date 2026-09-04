@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/satya-18-w/productivity-os/internal/account"
+	"github.com/satya-18-w/productivity-os/internal/goals"
 	"github.com/satya-18-w/productivity-os/internal/habits"
 	"github.com/satya-18-w/productivity-os/internal/platform/config"
 	"github.com/satya-18-w/productivity-os/internal/platform/httpx"
@@ -76,6 +77,7 @@ func run() error {
 	timeline.NewHandler(timeline.NewService(pool, zone), zone).Mount(mux, write, read)
 	tasks.NewHandler(tasks.NewService(pool)).Mount(mux, write, read)
 	habits.NewHandler(habits.NewService(pool, zone), zone).Mount(mux, write, read)
+	goals.NewHandler(goals.NewService(pool)).Mount(mux, write, read)
 
 	// Everything not matched above is the frontend (client-side routing).
 	if bundle, ok := web.Bundle(); ok {

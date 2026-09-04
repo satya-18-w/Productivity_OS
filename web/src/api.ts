@@ -108,6 +108,24 @@ export interface HabitList {
   archived: ArchivedHabit[];
 }
 
+export type GoalProgress = "NOT_STARTED" | "IN_PROGRESS" | "ACHIEVED" | "ABANDONED";
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  target_date: string | null;
+  progress: GoalProgress;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewGoal {
+  title: string;
+  description: string;
+  target_date: string | null;
+}
+
 export interface FieldErrors {
   [field: string]: string;
 }
@@ -198,6 +216,13 @@ export const api = {
     request<void>("PUT", `/api/habits/${id}/completions/${date}`),
   unmarkHabit: (id: string, date: string) =>
     request<void>("DELETE", `/api/habits/${id}/completions/${date}`),
+
+  goals: () => request<{ goals: Goal[] }>("GET", "/api/goals").then((r) => r.goals),
+  createGoal: (g: NewGoal) => request<Goal>("POST", "/api/goals", g),
+  updateGoal: (id: string, g: NewGoal) => request<void>("PATCH", `/api/goals/${id}`, g),
+  setGoalProgress: (id: string, progress: GoalProgress) =>
+    request<void>("PUT", `/api/goals/${id}/progress`, { progress }),
+  deleteGoal: (id: string) => request<void>("DELETE", `/api/goals/${id}`),
 };
 
 export function browserTimezone(): string {

@@ -16,8 +16,8 @@ through deterministic analytics — before any intelligent assistance.
 
 ## V1 — Core Productivity OS
 
-**Progress: 4 / 10 areas built** (Authentication, Timeline, Tasks, Habits). All awaiting
-a browser click-through and a first CI run.
+**Progress: 5 / 10 areas built** (Authentication, Timeline, Tasks, Habits, Goals). All
+awaiting a browser click-through and a first CI run.
 
 | # | Area | Milestone | Status |
 |---|------|-----------|--------|
@@ -25,7 +25,7 @@ a browser click-through and a first CI run.
 | 2 | Daily Timeline & Time Tracking | M2 | ✅ built (browser + CI run still to do) |
 | 3 | Tasks + Kanban | M3 | ✅ built (browser + CI run still to do) |
 | 4 | Habits & Streaks | M4 | ✅ built (browser + CI run still to do) |
-| 5 | Goals | M5 | ⬜ |
+| 5 | Goals | M5 | ✅ built (browser + CI run still to do) |
 | 6 | Reviews (daily + weekly) | M6 | ⬜ |
 | 7 | Deterministic Productivity Reports | M7 | ⬜ |
 | 8 | Data Export | M8 | ⬜ |
@@ -95,11 +95,11 @@ priorities, labels, estimates, attachments, comments, or dependencies.
 **Scope boundary:** daily only — no weekly/monthly cadence, weekday selection, grace
 days, freezes, or vacation mode. A completion has no quantity or note.
 
-### 5. Goals — ⬜ M5
+### 5. Goals — ✅ M5
 
-- [ ] Create / edit / delete a goal (title, optional description, optional target date)
-- [ ] Set manual four-state progress: not started / in progress / achieved / abandoned
-- [ ] See the list of goals with progress state
+- [x] Create / edit / delete a goal (title, optional description, optional target date)
+- [x] Set manual four-state progress: not started / in progress / achieved / abandoned
+- [x] See the list of goals with a colour-coded progress state
 
 **Scope boundary:** progress is manual only — no percentages, no roll-up from tasks /
 habits / time, no goal hierarchy, no milestones or check-in history.
@@ -145,11 +145,13 @@ import; no delivery to a third party.
 - [x] Categories UI · daily timeline UI · planned-vs-actual view (M2)
 - [x] Kanban board — 4 columns, task cards, create/edit/delete, move via select + drag (M3)
 - [x] Habits — date nav, streak, per-date toggle, archive/unarchive (M4)
+- [x] Goals — progress chips, four-state select, create/edit/delete (M5)
 - [ ] Habits (M4)
 - [ ] Goals (M5)
 - [ ] Reviews (M6)
 - [ ] Reports (M7)
 - [ ] Data export UI (M8)
+- [x] Design system — tokens (spacing/type/colour scale), light + dark, restrained elevation; all pages refreshed
 - [~] Responsive — CSS targets 375px & 1280px; visual acceptance pass pending
 
 **Scope boundary:** no native app, offline mode, or installable PWA in V1.
