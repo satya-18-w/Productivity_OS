@@ -3,26 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, type FieldErrors } from "../api";
 import { useAuth } from "../auth";
 
-export function Shell() {
+export function Account() {
   const { account, refresh, setAccount } = useAuth();
   const navigate = useNavigate();
 
-  async function logout() {
-    try {
-      await api.logout();
-    } finally {
-      setAccount(null);
-      navigate("/login", { replace: true });
-    }
-  }
-
   return (
-    <div className="shell">
-      <header>
-        <h1>Productivity OS</h1>
-        <button className="link" onClick={logout}>Log out</button>
-      </header>
-
+    <div className="stack">
       <section className="card">
         <h2>Account</h2>
         <dl>
@@ -34,9 +20,12 @@ export function Shell() {
       </section>
 
       <TimezoneForm current={account?.timezone ?? ""} onSaved={refresh} />
-      <PasswordForm onChanged={() => { setAccount(null); navigate("/login", { replace: true }); }} />
-
-      <p className="muted">This is the authenticated shell. Product features arrive in later milestones.</p>
+      <PasswordForm
+        onChanged={() => {
+          setAccount(null);
+          navigate("/login", { replace: true });
+        }}
+      />
     </div>
   );
 }
@@ -108,16 +97,32 @@ function PasswordForm({ onChanged }: { onChanged: () => void }) {
       {error && <p className="error" role="alert">{error}</p>}
       <label>
         Current password
-        <input type="password" autoComplete="current-password" required value={current}
-          onChange={(e) => setCurrent(e.target.value)} />
+        <input
+          type="password"
+          autoComplete="current-password"
+          required
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
       </label>
       <label>
         New password
-        <input type="password" autoComplete="new-password" required minLength={12} value={next}
-          onChange={(e) => setNext(e.target.value)} />
-        {fields.new_password
-          ? <span className="field-error">{fields.new_password}</span>
-          : <span className="hint">At least 12 characters. You will be signed out.</span>}
+        <input
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={6}
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+        />
+        {fields.new_password ? (
+          <span className="field-error">{fields.new_password}</span>
+        ) : (
+          <span className="hint">
+            At least 6 characters, with a lowercase letter, an uppercase letter, and a special
+            character. You will be signed out.
+          </span>
+        )}
       </label>
       <button type="submit" disabled={busy}>Change password</button>
     </form>

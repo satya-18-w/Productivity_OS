@@ -20,6 +20,7 @@ import (
 
 	"github.com/satya-18-w/productivity-os/internal/account/accountdb"
 	"github.com/satya-18-w/productivity-os/internal/platform/password"
+	"github.com/satya-18-w/productivity-os/internal/platform/reqctx"
 	"github.com/satya-18-w/productivity-os/internal/platform/timezone"
 )
 
@@ -112,25 +113,25 @@ func (s *service) Authenticate(ctx context.Context, email, plaintext string) (Se
 	return sess, nil
 }
 
-func (s *service) ResolveSession(ctx context.Context, token string) (Identity, error) {
+func (s *service) ResolveSession(ctx context.Context, token string) (reqctx.Identity, error) {
 	if token == "" {
-		return Identity{}, ErrSessionInvalid
+		return reqctx.Identity{}, ErrSessionInvalid
 	}
 	row, err := s.q.GetSession(ctx, hashToken(token))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return Identity{}, ErrSessionInvalid
+			return reqctx.Identity{}, ErrSessionInvalid
 		}
-		return Identity{}, fmt.Errorf("get session: %w", err)
+		return reqctx.Identity{}, fmt.Errorf("get session: %w", err)
 	}
 	if !row.ExpiresAt.Valid || !s.now().Before(row.ExpiresAt.Time) {
-		return Identity{}, ErrSessionInvalid
+		return reqctx.Identity{}, ErrSessionInvalid
 	}
 	// Best-effort: a failed last-seen update must not fail the request.
 	if err := s.q.TouchSession(ctx, hashToken(token)); err != nil {
 		slog.WarnContext(ctx, "touch session failed", slog.String("error", err.Error()))
 	}
-	return Identity{AccountID: row.AccountID}, nil
+	return reqctx.Identity{AccountID: row.AccountID}, nil
 }
 
 func (s *service) EndSession(ctx context.Context, token string) error {

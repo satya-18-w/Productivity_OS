@@ -9,6 +9,7 @@ import (
 
 	"github.com/satya-18-w/productivity-os/internal/platform/httpx"
 	"github.com/satya-18-w/productivity-os/internal/platform/ratelimit"
+	"github.com/satya-18-w/productivity-os/internal/platform/reqctx"
 )
 
 // SessionCookieName is the name of the session cookie.
@@ -169,7 +170,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 // getAccount returns the caller's own profile.
 func (h *Handler) getAccount(w http.ResponseWriter, r *http.Request) {
-	id, _ := IdentityFrom(r.Context())
+	id, _ := reqctx.IdentityFrom(r.Context())
 	profile, err := h.svc.Read(r.Context(), id.AccountID)
 	if err != nil {
 		writeServiceError(w, r, err)
@@ -188,7 +189,7 @@ func (h *Handler) putTimezone(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, r, err)
 		return
 	}
-	id, _ := IdentityFrom(r.Context())
+	id, _ := reqctx.IdentityFrom(r.Context())
 	if err := h.svc.SetTimezone(r.Context(), id.AccountID, req.Timezone); err != nil {
 		writeServiceError(w, r, err)
 		return
@@ -207,7 +208,7 @@ func (h *Handler) putPassword(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, r, err)
 		return
 	}
-	id, _ := IdentityFrom(r.Context())
+	id, _ := reqctx.IdentityFrom(r.Context())
 	if err := h.svc.ChangePassword(r.Context(), id.AccountID, req.CurrentPassword, req.NewPassword); err != nil {
 		writeServiceError(w, r, err)
 		return

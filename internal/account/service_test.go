@@ -33,7 +33,7 @@ func TestRegister_CreatesAccountAndSession(t *testing.T) {
 	ctx := context.Background()
 
 	profile, sess, err := svc.Register(ctx, account.RegisterInput{
-		Email: "Alice@Example.com", Password: "correct horse staple", Timezone: "Asia/Kolkata",
+		Email: "Alice@Example.com", Password: "Passw0rd!", Timezone: "Asia/Kolkata",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "alice@example.com", profile.Email)
@@ -56,7 +56,7 @@ func TestRegister_CreatesAccountAndSession(t *testing.T) {
 
 func TestRegister_StoresOnlyArgon2idHash(t *testing.T) {
 	svc, pool := newSvc(t, time.Hour)
-	const pw = "super secret value 123"
+	const pw = "Passw0rd!"
 	mustRegister(t, svc, "bob@example.com", pw, "UTC")
 
 	var stored string
@@ -69,10 +69,10 @@ func TestRegister_StoresOnlyArgon2idHash(t *testing.T) {
 func TestRegister_DuplicateEmailCaseInsensitive(t *testing.T) {
 	svc, pool := newSvc(t, time.Hour)
 	ctx := context.Background()
-	mustRegister(t, svc, "dup@example.com", "password one two", "UTC")
+	mustRegister(t, svc, "dup@example.com", "Passw0rd!", "UTC")
 
 	_, _, err := svc.Register(ctx, account.RegisterInput{
-		Email: "DUP@example.com", Password: "another password", Timezone: "UTC",
+		Email: "DUP@example.com", Password: "Passw0rd!", Timezone: "UTC",
 	})
 	require.ErrorIs(t, err, account.ErrEmailTaken)
 
@@ -89,9 +89,12 @@ func TestRegister_ValidationErrors(t *testing.T) {
 		in    account.RegisterInput
 		field string
 	}{
-		{"bad email", account.RegisterInput{Email: "nope", Password: "long enough pw", Timezone: "UTC"}, "email"},
-		{"short password", account.RegisterInput{Email: "a@b.com", Password: "short", Timezone: "UTC"}, "password"},
-		{"bad timezone", account.RegisterInput{Email: "a@b.com", Password: "long enough pw", Timezone: "Mars/Base"}, "timezone"},
+		{"bad email", account.RegisterInput{Email: "nope", Password: "Passw0rd!", Timezone: "UTC"}, "email"},
+		{"password too short", account.RegisterInput{Email: "a@b.com", Password: "Aa!1", Timezone: "UTC"}, "password"},
+		{"password no lowercase", account.RegisterInput{Email: "a@b.com", Password: "UPPER!1", Timezone: "UTC"}, "password"},
+		{"password no uppercase", account.RegisterInput{Email: "a@b.com", Password: "lower!1", Timezone: "UTC"}, "password"},
+		{"password no special", account.RegisterInput{Email: "a@b.com", Password: "NoSpecial1", Timezone: "UTC"}, "password"},
+		{"bad timezone", account.RegisterInput{Email: "a@b.com", Password: "Passw0rd!", Timezone: "Mars/Base"}, "timezone"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -106,7 +109,7 @@ func TestRegister_ValidationErrors(t *testing.T) {
 func TestRegister_DefaultTimezoneWhenAbsent(t *testing.T) {
 	svc, _ := newSvc(t, time.Hour)
 	profile, _, err := svc.Register(context.Background(), account.RegisterInput{
-		Email: "tz@example.com", Password: "a decent password", Timezone: "",
+		Email: "tz@example.com", Password: "Passw0rd!", Timezone: "",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "UTC", profile.Timezone)
@@ -115,16 +118,16 @@ func TestRegister_DefaultTimezoneWhenAbsent(t *testing.T) {
 func TestAuthenticate(t *testing.T) {
 	svc, _ := newSvc(t, time.Hour)
 	ctx := context.Background()
-	mustRegister(t, svc, "auth@example.com", "the real password", "UTC")
+	mustRegister(t, svc, "auth@example.com", "Passw0rd!", "UTC")
 
-	sess, err := svc.Authenticate(ctx, "AUTH@example.com", "the real password")
+	sess, err := svc.Authenticate(ctx, "AUTH@example.com", "Passw0rd!")
 	require.NoError(t, err)
 	require.NotEmpty(t, sess.Token)
 
 	_, err = svc.Authenticate(ctx, "auth@example.com", "wrong password here")
 	require.ErrorIs(t, err, account.ErrInvalidCredentials)
 
-	_, err = svc.Authenticate(ctx, "ghost@example.com", "the real password")
+	_, err = svc.Authenticate(ctx, "ghost@example.com", "Passw0rd!")
 	require.ErrorIs(t, err, account.ErrInvalidCredentials)
 }
 
@@ -132,7 +135,7 @@ func TestResolveSession(t *testing.T) {
 	svc, _ := newSvc(t, time.Hour)
 	ctx := context.Background()
 	_, sess, err := svc.Register(ctx, account.RegisterInput{
-		Email: "res@example.com", Password: "resolve me please", Timezone: "UTC",
+		Email: "res@example.com", Password: "Passw0rd!", Timezone: "UTC",
 	})
 	require.NoError(t, err)
 
@@ -148,7 +151,7 @@ func TestResolveSession_Expired(t *testing.T) {
 	svc, _ := newSvc(t, 30*time.Millisecond)
 	ctx := context.Background()
 	_, sess, err := svc.Register(ctx, account.RegisterInput{
-		Email: "exp@example.com", Password: "expire me soon ok", Timezone: "UTC",
+		Email: "exp@example.com", Password: "Passw0rd!", Timezone: "UTC",
 	})
 	require.NoError(t, err)
 
@@ -161,7 +164,7 @@ func TestEndSession(t *testing.T) {
 	svc, _ := newSvc(t, time.Hour)
 	ctx := context.Background()
 	_, sess, _ := svc.Register(ctx, account.RegisterInput{
-		Email: "logout@example.com", Password: "log me out now ok", Timezone: "UTC",
+		Email: "logout@example.com", Password: "Passw0rd!", Timezone: "UTC",
 	})
 
 	require.NoError(t, svc.EndSession(ctx, sess.Token))
@@ -173,23 +176,23 @@ func TestChangePassword_EndsAllSessions(t *testing.T) {
 	svc, pool := newSvc(t, time.Hour)
 	ctx := context.Background()
 	_, sess, _ := svc.Register(ctx, account.RegisterInput{
-		Email: "cp@example.com", Password: "original password!", Timezone: "UTC",
+		Email: "cp@example.com", Password: "Passw0rd!", Timezone: "UTC",
 	})
 	id, err := svc.ResolveSession(ctx, sess.Token)
 	require.NoError(t, err)
 
 	require.ErrorIs(t,
-		svc.ChangePassword(ctx, id.AccountID, "wrong current pw", "brand new password"),
+		svc.ChangePassword(ctx, id.AccountID, "wrong current pw", "NewPassw0rd!"),
 		account.ErrInvalidCredentials)
 
-	require.NoError(t, svc.ChangePassword(ctx, id.AccountID, "original password!", "brand new password"))
+	require.NoError(t, svc.ChangePassword(ctx, id.AccountID, "Passw0rd!", "NewPassw0rd!"))
 
 	var open int
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT count(*) FROM sessions WHERE account_id = $1`, id.AccountID).Scan(&open))
 	require.Equal(t, 0, open)
 
-	_, err = svc.Authenticate(ctx, "cp@example.com", "brand new password")
+	_, err = svc.Authenticate(ctx, "cp@example.com", "NewPassw0rd!")
 	require.NoError(t, err)
 }
 
@@ -197,7 +200,7 @@ func TestSetTimezone(t *testing.T) {
 	svc, _ := newSvc(t, time.Hour)
 	ctx := context.Background()
 	_, sess, _ := svc.Register(ctx, account.RegisterInput{
-		Email: "stz@example.com", Password: "timezone changer!", Timezone: "UTC",
+		Email: "stz@example.com", Password: "Passw0rd!", Timezone: "UTC",
 	})
 	id, _ := svc.ResolveSession(ctx, sess.Token)
 

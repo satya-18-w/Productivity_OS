@@ -1,12 +1,12 @@
 package account
 
 import (
-	"context"
 	"crypto/subtle"
 	"errors"
 	"net/http"
 
 	"github.com/satya-18-w/productivity-os/internal/platform/httpx"
+	"github.com/satya-18-w/productivity-os/internal/platform/reqctx"
 )
 
 // csrfCookieName is the readable double-submit CSRF cookie. The SPA echoes its
@@ -15,20 +15,6 @@ const csrfCookieName = "csrf_token"
 
 // csrfHeaderName is where the SPA sends the token back.
 const csrfHeaderName = "X-CSRF-Token"
-
-type ctxKey int
-
-const identityKey ctxKey = iota
-
-// IdentityFrom returns the authenticated identity placed in ctx by RequireAuth.
-func IdentityFrom(ctx context.Context) (Identity, bool) {
-	id, ok := ctx.Value(identityKey).(Identity)
-	return id, ok
-}
-
-func withIdentity(ctx context.Context, id Identity) context.Context {
-	return context.WithValue(ctx, identityKey, id)
-}
 
 // RequireAuth resolves the session cookie to an account and puts its identity in
 // the request context. Requests without a valid session get 401 UNAUTHENTICATED.
@@ -49,7 +35,7 @@ func (h *Handler) RequireAuth(next http.Handler) http.Handler {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(withIdentity(r.Context(), id)))
+		next.ServeHTTP(w, r.WithContext(reqctx.WithIdentity(r.Context(), id)))
 	})
 }
 

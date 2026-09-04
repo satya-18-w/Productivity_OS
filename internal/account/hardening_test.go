@@ -30,7 +30,7 @@ func TestHardening_InternalErrorDoesNotLeak(t *testing.T) {
 
 	jar, _ := cookiejar.New(nil)
 	c := &authClient{t: t, base: srv.URL, hc: &http.Client{Jar: jar}}
-	c.register("leak@example.com", "leak test password here", "UTC")
+	c.register("leak@example.com", "Passw0rd!", "UTC")
 
 	pool.Close() // every subsequent query fails
 

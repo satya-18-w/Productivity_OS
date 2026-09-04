@@ -72,7 +72,7 @@ func TestAuthFlow_RequireAuth(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Equal(t, "UNAUTHENTICATED", readBody(t, resp)["error"].(map[string]any)["code"])
 
-	c.register("flow@example.com", "the flow password", "UTC")
+	c.register("flow@example.com", "Passw0rd!", "UTC")
 
 	resp = c.do(http.MethodGet, "/api/account", "")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -91,7 +91,7 @@ func TestAuthFlow_BadCookie(t *testing.T) {
 
 func TestAuthFlow_CSRFRequiredForWrites(t *testing.T) {
 	c, srv := newFlow(t, time.Hour)
-	c.register("csrf@example.com", "csrf test password", "UTC")
+	c.register("csrf@example.com", "Passw0rd!", "UTC")
 
 	// A write without the CSRF header is rejected even with a valid session.
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, srv.URL+"/api/account/timezone",
@@ -116,7 +116,7 @@ func TestAuthFlow_CSRFRequiredForWrites(t *testing.T) {
 
 func TestAuthFlow_Logout(t *testing.T) {
 	c, _ := newFlow(t, time.Hour)
-	c.register("bye@example.com", "logout me please", "UTC")
+	c.register("bye@example.com", "Passw0rd!", "UTC")
 
 	resp := c.do(http.MethodDelete, "/api/sessions/current", "")
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
@@ -128,10 +128,10 @@ func TestAuthFlow_Logout(t *testing.T) {
 
 func TestAuthFlow_PasswordChangeEndsSession(t *testing.T) {
 	c, _ := newFlow(t, time.Hour)
-	c.register("pw@example.com", "original secret pw", "UTC")
+	c.register("pw@example.com", "Passw0rd!", "UTC")
 
 	resp := c.do(http.MethodPut, "/api/account/password",
-		`{"current_password":"original secret pw","new_password":"a fresh new secret"}`)
+		`{"current_password":"Passw0rd!","new_password":"NewPassw0rd!"}`)
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 	resp.Body.Close()
 
@@ -140,7 +140,7 @@ func TestAuthFlow_PasswordChangeEndsSession(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, after.StatusCode)
 
 	// wrong current password
-	c.register("pw2@example.com", "another original", "UTC")
+	c.register("pw2@example.com", "Passw0rd!", "UTC")
 	bad := c.do(http.MethodPut, "/api/account/password",
 		`{"current_password":"not it","new_password":"whatever long enough"}`)
 	require.Equal(t, http.StatusUnauthorized, bad.StatusCode)
@@ -149,11 +149,11 @@ func TestAuthFlow_PasswordChangeEndsSession(t *testing.T) {
 
 func TestAuthFlow_CrossAccountIsolation(t *testing.T) {
 	a, srv := newFlow(t, time.Hour)
-	a.register("a@example.com", "account a password", "Asia/Kolkata")
+	a.register("a@example.com", "Passw0rd!", "Asia/Kolkata")
 
 	jarB, _ := cookiejar.New(nil)
 	b := &authClient{t: t, base: srv.URL, hc: &http.Client{Jar: jarB}}
-	b.register("b@example.com", "account b password", "America/New_York")
+	b.register("b@example.com", "Passw0rd!", "America/New_York")
 
 	// B reads only B's data, regardless of any body/query.
 	resp := b.do(http.MethodGet, "/api/account?account_id=whatever", "")
@@ -170,7 +170,7 @@ func TestAuthFlow_CrossAccountIsolation(t *testing.T) {
 
 func TestAuthFlow_ExpiredSession(t *testing.T) {
 	c, _ := newFlow(t, 30*time.Millisecond)
-	c.register("stale@example.com", "expire this session", "UTC")
+	c.register("stale@example.com", "Passw0rd!", "UTC")
 	time.Sleep(60 * time.Millisecond)
 
 	resp := c.do(http.MethodGet, "/api/account", "")

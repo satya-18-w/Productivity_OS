@@ -9,11 +9,18 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/satya-18-w/productivity-os/internal/account"
+	"github.com/satya-18-w/productivity-os/internal/habits"
 	"github.com/satya-18-w/productivity-os/internal/platform/config"
 	"github.com/satya-18-w/productivity-os/internal/platform/httpx"
 	"github.com/satya-18-w/productivity-os/internal/platform/postgres"
+	"github.com/satya-18-w/productivity-os/internal/platform/timezone"
+	"github.com/satya-18-w/productivity-os/internal/tasks"
+	"github.com/satya-18-w/productivity-os/internal/timeline"
 	"github.com/satya-18-w/productivity-os/web"
 )
 
@@ -59,6 +66,17 @@ func run() error {
 	accountHandler.MountPublic(mux)
 	accountHandler.MountAuthed(mux)
 
+	write := func(fn http.HandlerFunc) http.Handler {
+		return accountHandler.RequireAuth(accountHandler.RequireCSRF(fn))
+	}
+	read := func(fn http.HandlerFunc) http.Handler {
+		return accountHandler.RequireAuth(fn)
+	}
+	zone := accountZone{accountSvc}
+	timeline.NewHandler(timeline.NewService(pool, zone), zone).Mount(mux, write, read)
+	tasks.NewHandler(tasks.NewService(pool)).Mount(mux, write, read)
+	habits.NewHandler(habits.NewService(pool, zone), zone).Mount(mux, write, read)
+
 	// Everything not matched above is the frontend (client-side routing).
 	if bundle, ok := web.Bundle(); ok {
 		mux.Handle("/", httpx.SPA(bundle))
@@ -75,6 +93,17 @@ func run() error {
 
 	srv := httpx.NewServer(":"+cfg.Port, handler, cfg.ShutdownGrace)
 	return srv.Run(ctx)
+}
+
+// accountZone adapts the account module to timeline.AccountZone.
+type accountZone struct{ svc account.Service }
+
+func (a accountZone) Zone(ctx context.Context, id uuid.UUID) (*time.Location, error) {
+	p, err := a.svc.Read(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return timezone.LoadLocation(p.Timezone)
 }
 
 func setupLogger(cfg config.Config) {

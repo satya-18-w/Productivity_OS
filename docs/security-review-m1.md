@@ -45,7 +45,8 @@ for V1 with rationale or deferred to a named decision.
 | F4 | `POST /api/accounts` and `POST /api/sessions` are CSRF-exempt (no token exists pre-auth). | Accepted. Login/registration CSRF is low severity; `SameSite=Lax` still applies. |
 | F5 | The CSRF token is a stateless double-submit value, not HMAC-bound to the session. | Matches the planning decision. HMAC-binding is optional future hardening. |
 | F7 | `clientIP` reads `RemoteAddr`; behind a proxy every user could share one bucket, and naively trusting `X-Forwarded-For` would be spoofable. | Deferred to **ADR-0008** (deployment/proxy shape). Marked with a `NOTE` in `http.go`. |
-| — | No breached-password denylist. | Explicitly out of V1 per Q6 default. |
+| — | No breached-password denylist. | Explicitly out of V1 per Q6. |
+| — | Password policy: min 6, composition rules (lower/upper/special). | Product-owner decision (Q6, 2026-09-04). Note: a short minimum plus composition rules is weaker against modern guessing than a longer minimum with no composition — accepted for a personal tool. Revisit if the threat model changes. |
 | — | No `__Host-` cookie prefix. | Optional hardening; revisit with ADR-0008 (needs HTTPS + no `Domain`). |
 
 ## Re-verification

@@ -9,13 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-)
 
-// Identity is the authenticated principal the auth middleware places in the
-// request context. It is the only source of an acting account id (ADR-0004).
-type Identity struct {
-	AccountID uuid.UUID
-}
+	"github.com/satya-18-w/productivity-os/internal/platform/reqctx"
+)
 
 // Profile is an account's own visible data (v1.md §1: email and timezone only).
 type Profile struct {
@@ -65,7 +61,7 @@ type Service interface {
 
 	// ResolveSession maps a session token to its account. ErrSessionInvalid if
 	// the token is unknown or the session has expired.
-	ResolveSession(ctx context.Context, token string) (Identity, error)
+	ResolveSession(ctx context.Context, token string) (reqctx.Identity, error)
 
 	// EndSession deletes one session (logout). Deleting an unknown token is a
 	// no-op.

@@ -49,11 +49,11 @@ export function Register() {
         </label>
         <label>
           Password
-          <input type="password" autoComplete="new-password" required minLength={12} value={password}
+          <input type="password" autoComplete="new-password" required minLength={6} value={password}
             onChange={(e) => setPassword(e.target.value)} />
           {fields.password
             ? <span className="field-error">{fields.password}</span>
-            : <span className="hint">At least 12 characters.</span>}
+            : <span className="hint">At least 6 characters, with a lowercase letter, an uppercase letter, and a special character.</span>}
         </label>
         <label>
           Timezone

@@ -14,11 +14,11 @@ import (
 func twoAccounts(t *testing.T) (a, b *authClient) {
 	t.Helper()
 	a, _ = newFlow(t, time.Hour)
-	a.register("a@iso.test", "account a secret pw", "Asia/Kolkata")
+	a.register("a@iso.test", "Passw0rd!", "Asia/Kolkata")
 
 	jar, _ := cookiejar.New(nil)
 	b = &authClient{t: t, base: a.base, hc: &http.Client{Jar: jar}}
-	b.register("b@iso.test", "account b secret pw", "America/New_York")
+	b.register("b@iso.test", "Passw0rd!", "America/New_York")
 	return a, b
 }
 
@@ -75,7 +75,7 @@ func TestIsolation_PasswordChangeDoesNotCross(t *testing.T) {
 	a, b := twoAccounts(t)
 
 	resp := b.do(http.MethodPut, "/api/account/password",
-		`{"current_password":"account b secret pw","new_password":"b brand new pw"}`)
+		`{"current_password":"Passw0rd!","new_password":"NewPassw0rd!"}`)
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 	resp.Body.Close()
 
@@ -84,7 +84,7 @@ func TestIsolation_PasswordChangeDoesNotCross(t *testing.T) {
 	// B must re-login.
 	require.Equal(t, http.StatusUnauthorized, b.do(http.MethodGet, "/api/account", "").StatusCode)
 	// B's new password does not authenticate as A.
-	login := b.do(http.MethodPost, "/api/sessions", `{"email":"a@iso.test","password":"b brand new pw"}`)
+	login := b.do(http.MethodPost, "/api/sessions", `{"email":"a@iso.test","password":"NewPassw0rd!"}`)
 	require.Equal(t, http.StatusUnauthorized, login.StatusCode)
 }
 

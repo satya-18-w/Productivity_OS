@@ -17,10 +17,64 @@ type Account struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type Category struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	Name       string
+	ArchivedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
+type Habit struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	Name       string
+	ArchivedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
+type HabitCompletion struct {
+	ID        uuid.UUID
+	HabitID   uuid.UUID
+	AccountID uuid.UUID
+	OnDate    pgtype.Date
+	CreatedAt pgtype.Timestamptz
+}
+
 type Session struct {
 	Token      string
 	AccountID  uuid.UUID
 	CreatedAt  pgtype.Timestamptz
 	ExpiresAt  pgtype.Timestamptz
 	LastSeenAt pgtype.Timestamptz
+}
+
+type Task struct {
+	ID          uuid.UUID
+	AccountID   uuid.UUID
+	Title       string
+	Description pgtype.Text
+	DueDate     pgtype.Date
+	State       string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type TaskTransition struct {
+	ID        uuid.UUID
+	TaskID    uuid.UUID
+	AccountID uuid.UUID
+	FromState pgtype.Text
+	ToState   string
+	At        pgtype.Timestamptz
+}
+
+type TimeBlock struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	Kind       string
+	StartsAt   pgtype.Timestamptz
+	EndsAt     pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	CreatedAt  pgtype.Timestamptz
 }

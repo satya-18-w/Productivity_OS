@@ -3,13 +3,16 @@ package account
 import (
 	"net/mail"
 	"strings"
+	"unicode"
 
 	"github.com/satya-18-w/productivity-os/internal/platform/timezone"
 )
 
-// Password policy (Q6 default): length only, 12–128 bytes.
+// Password policy (Q6, resolved 2026-09-04): 6–128 chars, with at least one
+// lowercase letter, one uppercase letter, and one special character (anything
+// that is not a letter or a digit). See docs/requirements/v1.md.
 const (
-	minPasswordLen = 12
+	minPasswordLen = 6
 	maxPasswordLen = 128
 	maxEmailLen    = 254
 )
@@ -33,11 +36,31 @@ func validateEmail(raw string) (string, string) {
 }
 
 func validatePassword(p string) string {
-	switch {
-	case len(p) < minPasswordLen:
-		return "password must be at least 12 characters"
-	case len(p) > maxPasswordLen:
+	if len(p) < minPasswordLen {
+		return "password must be at least 6 characters"
+	}
+	if len(p) > maxPasswordLen {
 		return "password must be at most 128 characters"
+	}
+
+	var hasLower, hasUpper, hasSpecial bool
+	for _, r := range p {
+		switch {
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case !unicode.IsLetter(r) && !unicode.IsDigit(r):
+			hasSpecial = true
+		}
+	}
+	switch {
+	case !hasLower:
+		return "password must include a lowercase letter"
+	case !hasUpper:
+		return "password must include an uppercase letter"
+	case !hasSpecial:
+		return "password must include a special character"
 	default:
 		return ""
 	}

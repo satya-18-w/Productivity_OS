@@ -60,7 +60,7 @@ func TestRegisterEndpoint(t *testing.T) {
 	srv := newServer(t)
 
 	resp := postJSON(t, srv, "/api/accounts",
-		`{"email":"web@example.com","password":"a good long password","timezone":"Europe/London"}`)
+		`{"email":"web@example.com","password":"Passw0rd!","timezone":"Europe/London"}`)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	body := readBody(t, resp)
 	require.Equal(t, "web@example.com", body["email"])
@@ -73,7 +73,7 @@ func TestRegisterEndpoint(t *testing.T) {
 
 	// duplicate
 	dup := postJSON(t, srv, "/api/accounts",
-		`{"email":"WEB@example.com","password":"different password","timezone":"UTC"}`)
+		`{"email":"WEB@example.com","password":"Passw0rd!","timezone":"UTC"}`)
 	require.Equal(t, http.StatusConflict, dup.StatusCode)
 	require.Equal(t, "EMAIL_ALREADY_REGISTERED", readBody(t, dup)["error"].(map[string]any)["code"])
 }
@@ -102,9 +102,9 @@ func TestRegisterEndpoint_MalformedJSON(t *testing.T) {
 func TestLoginEndpoint_NoUserEnumeration(t *testing.T) {
 	srv := newServer(t)
 	postJSON(t, srv, "/api/accounts",
-		`{"email":"real@example.com","password":"the actual password","timezone":"UTC"}`).Body.Close()
+		`{"email":"real@example.com","password":"Passw0rd!","timezone":"UTC"}`).Body.Close()
 
-	unknown := postJSON(t, srv, "/api/sessions", `{"email":"ghost@example.com","password":"the actual password"}`)
+	unknown := postJSON(t, srv, "/api/sessions", `{"email":"ghost@example.com","password":"Passw0rd!"}`)
 	wrong := postJSON(t, srv, "/api/sessions", `{"email":"real@example.com","password":"not the password"}`)
 
 	require.Equal(t, http.StatusUnauthorized, unknown.StatusCode)
@@ -120,9 +120,9 @@ func TestLoginEndpoint_NoUserEnumeration(t *testing.T) {
 func TestLoginEndpoint_Success(t *testing.T) {
 	srv := newServer(t)
 	postJSON(t, srv, "/api/accounts",
-		`{"email":"ok@example.com","password":"login works fine","timezone":"UTC"}`).Body.Close()
+		`{"email":"ok@example.com","password":"Passw0rd!","timezone":"UTC"}`).Body.Close()
 
-	resp := postJSON(t, srv, "/api/sessions", `{"email":"ok@example.com","password":"login works fine"}`)
+	resp := postJSON(t, srv, "/api/sessions", `{"email":"ok@example.com","password":"Passw0rd!"}`)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	resp.Body.Close()
 	require.NotNil(t, sessionCookie(resp))
@@ -131,7 +131,7 @@ func TestLoginEndpoint_Success(t *testing.T) {
 func TestLoginEndpoint_RateLimited(t *testing.T) {
 	srv := newServer(t)
 	postJSON(t, srv, "/api/accounts",
-		`{"email":"rl@example.com","password":"rate limit me now","timezone":"UTC"}`).Body.Close()
+		`{"email":"rl@example.com","password":"Passw0rd!","timezone":"UTC"}`).Body.Close()
 
 	body := `{"email":"rl@example.com","password":"wrong every time"}`
 	for i := 0; i < 5; i++ {
