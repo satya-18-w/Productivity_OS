@@ -1,0 +1,22 @@
+# Local development database only. The Go process and the frontend toolchain run
+# natively on the host (ADR-0007).
+services:
+  postgres:
+    image: postgres:16
+    container_name: productivity_os_pg
+    environment:
+      POSTGRES_USER: productivity_os
+      POSTGRES_PASSWORD: productivity_os
+      POSTGRES_DB: productivity_os
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U productivity_os -d productivity_os"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

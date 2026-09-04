@@ -1,0 +1,20 @@
+# Go
+/bin/
+*.test
+*.out
+coverage.*
+
+# Env
+.env
+.env.local
+
+# Frontend
+/web/node_modules/
+/web/dist/
+/internal/platform/webassets/dist/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
