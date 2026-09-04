@@ -72,3 +72,34 @@ avatars / priorities.
 
 `timeline.md` · §4.3 view switcher · §4.4 filter chips · §4.8 list row · §4.12 donut ·
 §4.16 create/edit form · `requirements` §6 · `visual-principles.md` VP3, VP7, VP9, VP10.
+
+---
+
+## Phase 3 — Timeline (Agenda) — Status: ✅ COMPLETE (2026-09-04)
+
+Built as a view of the shared **`TimelineScreen`** (`?view=agenda`), alongside Day.
+
+- [x] **View switcher** (`SegmentedControl` Day / Agenda) added to the shared Timeline
+      toolbar; `?view=` URL param (omitted when "day").
+- [x] `TimelineDay` refactored → **`TimelineScreen`** — shared data load, date/view params,
+      block dialog, mini-calendar rail, `ComparisonCard`; body switches Day grid ↔ Agenda.
+- [x] **`AgendaList`** — planned + actual **merged, sorted by start time**; each row: time
+      range (tabular, ▲/▼ markers) + category dot + name + **Planned / Actual `Badge`**
+      (§5 distinction by text + tone, not colour alone). Past rows dimmed.
+- [x] **Category filter** — `Chip` row: "All (n)" + one per category present that day with
+      counts + colour dot; single-select, click active to clear.
+- [x] `<ol>` list; each row a `<button>` with a full accessible name → opens the block
+      dialog (same `BlockDialog` as Day). Empty + filtered-empty states.
+- [x] Responsive — rows wrap (time on its own line) `< 480px`; chips scroll; **Agenda is
+      the practical mobile view for a day**. No page h-scroll.
+- [x] Tests — `AgendaList` (5) + `TimelineScreen` view-switch/param tests. 88 total green.
+- [x] Browser-verified — desktop / mobile / dark; filter + Day↔Agenda switch; no console
+      errors. Matches `references/timeline-agenda.png` visual language **minus** the
+      excluded checkboxes / tags / avatars / "Top Priorities" / donut / list-grid toggle.
+- [ ] Committed — pending product owner.
+
+### Deferred
+- Rail "Time allocation" mini-summary (kept the full `ComparisonCard` below, shared with
+  Day — simpler, consistent).
+- `list | grid` toggle (reference-only affordance, no V1 need).
+- Multi-select category filter (single-select is enough for a single day).

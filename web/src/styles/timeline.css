@@ -1,0 +1,223 @@
+/* ============================================================================
+   Timeline (Day) — feature styles
+   G1 (design-system.md §6.1): time-proportional blocks, two labelled lanes,
+   category colour on the block, planned = dashed / actual = solid.
+   Absolute positioning is confined to blocks against the hour track (VP5).
+   ========================================================================== */
+
+.tl2 {
+  --tl-hour-h: 40px;
+  --tl-axis-w: 52px;
+}
+
+/* block dialog form */
+.tl2-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.tl2-form__row {
+  display: flex;
+  gap: var(--sp-3);
+}
+.tl2-form__row > * {
+  flex: 1;
+}
+.tl2-form__kind {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.tl2__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* --- Agenda view --------------------------------------------------------- */
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.agenda__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.agenda__filters::-webkit-scrollbar { display: none; }
+
+.agenda__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.agenda__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 12px var(--sp-4);
+  text-align: left;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  transition: background var(--dur) var(--ease);
+}
+.agenda__list li:first-child .agenda__row { border-top: 0; }
+.agenda__row:hover { background: var(--surface-hover); }
+.agenda__row--past { opacity: 0.6; }
+
+.agenda__time {
+  flex-shrink: 0;
+  width: 118px;
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.agenda__time-sep { margin: 0 4px; color: var(--text-muted); }
+
+.agenda__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.agenda__cat {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .agenda__row { flex-wrap: wrap; }
+  .agenda__time { width: 100%; }
+}
+
+.tl2__scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.tl2__grid {
+  display: grid;
+  grid-template-columns: var(--tl-axis-w) 1fr 1fr;
+  min-width: 460px;
+}
+
+.tl2__lane-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 10px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tl2__lane-head--axis { border-right: 1px solid var(--border); }
+
+.tl2__axis,
+.tl2__lane {
+  position: relative;
+  height: calc(var(--tl-hour-h) * 24);
+}
+.tl2__axis { border-right: 1px solid var(--border); }
+.tl2__lane + .tl2__lane { border-left: 1px solid var(--border); }
+
+.tl2__tick {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.tl2__hourline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+}
+
+.tl2__empty {
+  position: absolute;
+  inset: var(--sp-3) var(--sp-2) auto;
+  text-align: center;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.tl2__block {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: var(--radius-xs);
+  padding: 3px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  text-align: left;
+  color: var(--text);
+  background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 16%, var(--surface));
+  border: 1.5px solid var(--tl-cat, var(--cat-other));
+  transition: filter var(--dur) var(--ease);
+}
+.tl2__block:hover { filter: brightness(1.04); }
+.tl2__block--planned {
+  border-style: dashed;
+  background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 10%, var(--surface));
+}
+.tl2__block-time {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.tl2__block-cat {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "now" marker — rendered inside each lane, only when the date is today */
+.tl2__now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  border-top: 2px solid var(--danger);
+  pointer-events: none;
+}
+.tl2__lane:first-of-type .tl2__now::before {
+  content: attr(data-time);
+  position: absolute;
+  top: -8px;
+  left: 4px;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  background: var(--danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}

@@ -5,8 +5,8 @@ import { App } from "./App";
 import { AuthStub } from "./test/renderShell";
 import { mockViewport } from "./test/mockViewport";
 
-// Keep routing tests hermetic — stub the pages that would hit the API on mount.
-vi.mock("./pages/Timeline", () => ({ Timeline: () => <h1>Timeline page</h1> }));
+// Keep routing tests hermetic — stub the screens that would hit the API on mount.
+vi.mock("./features/timeline", () => ({ TimelineScreen: () => <h1>Timeline page</h1> }));
 vi.mock("./pages/Board", () => ({ Board: () => <h1>Board page</h1> }));
 vi.mock("./pages/Habits", () => ({ Habits: () => <h1>Habits page</h1> }));
 vi.mock("./pages/Goals", () => ({ Goals: () => <h1>Goals page</h1> }));

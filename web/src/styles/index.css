@@ -8,4 +8,5 @@
 @import "./base.css";
 @import "../styles.css";      /* legacy feature/component CSS — being migrated */
 @import "./primitives.css";
-@import "../shell/shell.css"; /* app shell (D3) */
+@import "../shell/shell.css";     /* app shell (D3) */
+@import "./timeline.css";         /* Timeline (Day) feature */

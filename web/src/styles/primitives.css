@@ -207,9 +207,11 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
 /* ---------------------------------------------------- Checkbox / Toggle --- */
 .ui-field-check {
   display: inline-flex;
+  flex-direction: row; /* override the legacy bare `label { flex-direction: column }` */
   align-items: center;
   gap: var(--sp-2);
   font-size: var(--fs-small);
+  font-weight: var(--fw-regular);
   color: var(--text);
   cursor: pointer;
 }
@@ -329,6 +331,7 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
   gap: 6px;
 }
 .ui-field__label {
+  display: block; /* override the legacy bare `label { display: flex; flex-direction: column }` */
   font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   color: var(--text-secondary);
@@ -659,6 +662,69 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
   animation: ui-spin 0.6s linear infinite;
 }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------- MiniCalendar --- */
+.ui-minical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-variant-numeric: tabular-nums;
+}
+.ui-minical__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.ui-minical__label {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+}
+.ui-minical__weekdays,
+.ui-minical__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.ui-minical__weekdays {
+  gap: 2px;
+}
+.ui-minical__weekdays span {
+  text-align: center;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+.ui-minical__grid {
+  gap: 2px;
+}
+.ui-minical__day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-caption);
+  color: var(--text);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.ui-minical__day:hover {
+  background: var(--surface-hover);
+}
+.ui-minical__day--outside {
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+.ui-minical__day--today {
+  box-shadow: inset 0 0 0 1.5px var(--brand);
+  font-weight: var(--fw-semibold);
+}
+.ui-minical__day--selected,
+.ui-minical__day--selected:hover {
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: none;
+}
 
 /* ============================================================================
    Layout primitives

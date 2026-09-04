@@ -95,11 +95,16 @@ web/src/components/
   ui/            — presentation primitives (Button, Card, Input, Dialog, Tabs, …)
   layout/        — layout primitives (Stack, Inline, Container, Section, PageHeader)
   productivity/  — domain-shaped presentation (StatCard, ListRow, StatusBadge, …)
+  date/          — MiniCalendar + local-date helpers
+web/src/features/<screen>/  — feature screens: own data fetching + state, compose
+                              primitives, rendered by a route in App.tsx
+web/src/shell/             — the app shell (AppShell, Sidebar, ScreenLayout, …)
 ```
 
-Foundation components are **presentation-only** — no data fetching, no business rules.
-Feature screens compose them and own state. Each subfolder has a barrel `index.ts`;
-`components/index.ts` re-exports all three.
+`components/**` is **presentation-only** — no data fetching, no business rules. A
+**feature** (`features/<screen>/`) owns its API calls and state, wraps its content in
+`<ScreenLayout>`, and is the element for its route. Each folder has a barrel `index.ts`.
+`web/src/pages/` holds the pre-design-system pages still being migrated screen by screen.
 
 ### Testing
 

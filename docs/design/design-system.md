@@ -382,10 +382,12 @@ proportion bar. Fill draws from the semantic / category palette.
 > from the category / semantic palette and must read correctly in light and dark; follow
 > the `dataviz` skill.
 
-### 4.13 Mini month calendar *(new)*
+### 4.13 Mini month calendar — **built** (`components/date/MiniCalendar`)
 
-Right-rail widget: month label + prev/next, 7-col weekday grid, today circled in
-`--brand`, days with activity carry a dot. Selecting a day drives the main view's date.
+Right-rail widget: month label + prev/next, 7-col weekday grid **Monday-first (D8)**,
+today ringed in `--brand`, selected day filled. `value` (ISO date) + `onChange`. Each day
+is a `<button>` with a full-date `aria-label` and `aria-pressed`/`aria-current="date"`.
+Selecting a day drives the screen's date. (Activity dots per day — deferred.)
 
 > **Week starts Monday — RESOLVED (D8).** ISO week semantics (`requirements` N4) are
 > authoritative everywhere: the mini-calendar, any week/month grid, and all date/week
@@ -456,6 +458,7 @@ settled; nothing gated on them may be implemented.
 | **D8** | **Monday-first / ISO week** semantics are authoritative everywhere. The Sunday-first calendar reference is a visual defect. | §4.13, `screens/calendar.md`, `screens/timeline-month.md` |
 | **D9** | Keep the existing **Inter** font stack. Do not introduce another typeface. | §3.2 |
 | **D10** | **SPA routes ratified**: `/` → Timeline (today) · `/timeline` · `/tasks` (list) · `/board` (Kanban) · `/habits` · `/goals` · `/categories` · `/reports` · `/reviews/daily` · `/reviews/weekly` · `/account` · `/export` · `/login` · `/register`. Tasks and Board are **separate** routes over the same task model. `/` landing is Timeline — **no dashboard** (D7 / §6.4). | `conventions.md` → Frontend, `screens/*.md` route lines |
+| **G1** | **Timeline block geometry (approved 2026-09-04):** blocks are **time-proportional** (height = duration) positioned against a 24-hour axis; two **labelled lanes** (Planned \| Actual). Block fill/border = its **category colour** (VP2); **planned** blocks are dashed-border + lighter fill, **actual** blocks solid — so planned/actual read from lane + line-style, not hue. Midnight-spanning blocks show ▲/▼ markers on the day boundary. Full 00:00–24:00 range, vertically scrollable. | `screens/timeline.md`, existing `.tl-*` in `web/src/styles.css` |
 
 ### 6.2 Pending — do not implement against these
 
@@ -465,7 +468,6 @@ settled; nothing gated on them may be implemented.
 | **T1** | Precise extraction / ratification of **exact token values** — brand, category, semantic, neutral hues (light + dark), final breakpoint pixel thresholds, and `--sidebar-w` / `--rail-w`. | A dedicated token-extraction pass. Until then, all hex in §3 is direction only. |
 | **C1** | Category **persistence model and detail** — whether a category stores a colour; whether it can be unarchived; whether categories ever attach to entities beyond time blocks; the sidebar "Spaces" concept. | A ratified product requirement. Until then: categories are flat labels on time blocks (§2); "Spaces" is not built. |
 | **R1** | Which visualisation renders each of the five fixed V1 reports (`requirements` §13). | The Reports specification. Screen spec `analytics.md` lists candidates only. |
-| **G1** | Timeline **block geometry** — time-proportional height vs ordered stack; handling of blocks outside the visible hour window; planned-vs-actual rendering in multi-day contexts. | The Timeline specification. |
 
 ### 6.3 V1 screens eligible for implementation (D3 / D10 approved 2026-09-04)
 

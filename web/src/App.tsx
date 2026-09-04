@@ -10,14 +10,14 @@ import { Board } from "./pages/Board";
 import { Categories } from "./pages/Categories";
 import { Goals } from "./pages/Goals";
 import { Habits } from "./pages/Habits";
-import { Timeline } from "./pages/Timeline";
+import { TimelineScreen } from "./features/timeline";
 
 /**
- * Routes (D10). Authenticated screens render inside <AppShell>. Screens not yet
- * rebuilt for the new design system render either their existing page wrapped in
- * <ScreenLayout> (Timeline / Board / Habits / Goals / Categories / Account) or a
- * <Placeholder> (Tasks / Reports / Reviews / Export). No /dashboard, /notes,
- * /calendar, /timeline/week|month (design-system.md §6.4).
+ * Routes (D10). Authenticated screens render inside <AppShell>.
+ * Built: Timeline (features/timeline). Not yet rebuilt for the design system:
+ * Board / Habits / Goals / Categories / Account render their existing page in
+ * <ScreenLayout>; Tasks / Reports / Reviews / Export show a <Placeholder>.
+ * No /dashboard, /notes, /calendar, /timeline/week|month (design-system.md §6.4).
  */
 export function App() {
   const { account, loading } = useAuth();
@@ -37,7 +37,7 @@ export function App() {
 
       <Route element={account ? <AppShell /> : <Navigate to="/login" replace />}>
         <Route path="/" element={<Navigate to="/timeline" replace />} />
-        <Route path="/timeline" element={<ScreenLayout><Timeline /></ScreenLayout>} />
+        <Route path="/timeline" element={<TimelineScreen />} />
         <Route path="/tasks" element={<Placeholder name="Tasks" phase={4} />} />
         <Route path="/board" element={<ScreenLayout><Board /></ScreenLayout>} />
         <Route path="/habits" element={<ScreenLayout><Habits /></ScreenLayout>} />

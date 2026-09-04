@@ -254,7 +254,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** load with fixture blocks; screenshot desktop/mobile/dark; verify axis + two lanes; compare to `timeline.png` (note: ref shows one merged list — we keep §5's planned/actual distinction; document)
 - **Visual acceptance:** shared template + hour axis legible; blocks time-proportional-or-ordered per SPEC; planned vs actual obvious; "now" indicator
 - **Acceptance criteria:** user can view a chosen date's planned+actual blocks positioned against hours, visually distinguishable, midnight-spanning correct (§5); per-category planned/actual totals reachable (§6); create/edit/delete blocks (§3,§4)
-- **Status:** ☐ NOT STARTED
+- **Status:** ✅ **COMPLETE (2026-09-04)** — G1 resolved (time-proportional, two lanes, category colour + dashed/solid). `web/src/features/timeline/**` + `web/src/components/date/MiniCalendar`. 23 tests. Deferred: `SplitButton`, Agenda view (Stage 4). Details + status: `screens/timeline.md` → "Phase 2".
 
 ### Stage 4 — Timeline (Agenda)
 
@@ -271,7 +271,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** screenshot desktop/mobile/dark; compare to `timeline-agenda.png` (drop checkboxes/tags/avatars/"priorities" — excluded)
 - **Visual acceptance:** shared template + rail connector + node dots + category-tinted rows
 - **Acceptance criteria:** same single date as Day, list form; §6 per-category totals visible; create/edit/delete via the block form
-- **Status:** ☐ NOT STARTED
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `AgendaList` + view switcher on the shared `TimelineScreen` (`TimelineDay` refactored → `TimelineScreen`). Merged time-ordered list, category filter chips, Planned/Actual badges, `?view=agenda` param. 88 tests. Details: `screens/timeline-agenda.md` → "Phase 3".
 
 ### Stage 5 — Tasks (List)
 
