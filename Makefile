@@ -55,11 +55,11 @@ sqlc-diff: ## Fail if generated sqlc code is stale
 	$(SQLC) diff
 
 .PHONY: run
-run: ## Run the server
+run: ## Run the server (API + whatever frontend bundle is currently in web/dist)
 	go run ./cmd/server
 
 .PHONY: build
-build: ## Build the server binary into ./bin
+build: web-build ## Build the frontend, then the server binary into ./bin (embeds web/dist)
 	go build -o bin/server ./cmd/server
 
 .PHONY: test
@@ -67,9 +67,10 @@ test: ## Run the Go test suite
 	go test ./...
 
 .PHONY: lint
-lint: ## Run go vet and golangci-lint
+lint: ## Run go vet, golangci-lint, and the frontend typecheck
 	go vet ./...
 	golangci-lint run
+	cd web && pnpm install --frozen-lockfile && pnpm typecheck
 
 ## --- frontend ---
 .PHONY: web-dev

@@ -14,6 +14,7 @@ import (
 	"github.com/satya-18-w/productivity-os/internal/platform/config"
 	"github.com/satya-18-w/productivity-os/internal/platform/httpx"
 	"github.com/satya-18-w/productivity-os/internal/platform/postgres"
+	"github.com/satya-18-w/productivity-os/web"
 )
 
 func main() {
@@ -57,6 +58,14 @@ func run() error {
 	})
 	accountHandler.MountPublic(mux)
 	accountHandler.MountAuthed(mux)
+
+	// Everything not matched above is the frontend (client-side routing).
+	if bundle, ok := web.Bundle(); ok {
+		mux.Handle("/", httpx.SPA(bundle))
+		slog.Info("serving embedded frontend bundle")
+	} else {
+		slog.Warn("no frontend bundle embedded; run `make web-build` before `go build`")
+	}
 
 	handler := httpx.Chain(mux,
 		httpx.RequestIDMiddleware,

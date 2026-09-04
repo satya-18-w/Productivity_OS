@@ -25,6 +25,7 @@ checkpoint. Tick boxes as we go.
 | Cookie | `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, name `session` | ADR-0004 |
 | Go version | `go 1.26.0` in `go.mod` (`x/crypto` requires it); toolchain auto-manages | ADR-0002 |
 | UUID type | `github.com/google/uuid` for account/session ids (added — was not in the original dep list) | — |
+| Frontend router | `react-router-dom` v7 (added — 3 routes with guards) | ADR-0006 |
 | Frontend data fetching | native `fetch` + a thin typed client wrapper; TanStack Query only if a real need appears | ADR-0006 deferred |
 | Frontend asset packaging | `go:embed` the built `web/dist` into the binary | ADR-0001/0006 deferred |
 
@@ -162,24 +163,23 @@ tests across packages don't deadlock on shared tables.*
 - [x] **CP 7a** isolation suite green for every M1 endpoint
 - [x] **CP 7b** security review complete; all fixed findings re-verified green
 
-## Phase 8 — Frontend shell
+## Phase 8 — Frontend shell  ✅ built (interactive check pending — no browser in this env)
 
-- [ ] 8.1  `web/` — Vite + React + TS scaffold; typed API client wrapper; CSRF token handling
-- [ ] 8.2  Register screen (email, password, timezone pre-filled from `Intl.DateTimeFormat().resolvedOptions().timeZone`)
-- [ ] 8.3  Login screen (email, password)
-- [ ] 8.4  Authenticated shell — show email + timezone, change-timezone control, change-password form, logout button; no product features
-- [ ] 8.5  Route guards — logged-out → login on protected routes; logged-in → shell on login/register; auth state resolved by calling `GET /api/account` on load
-- [ ] 8.6  `go:embed web/dist`; Go serves assets + SPA fallback for non-`/api`, non-health routes
-- [ ] 8.7  Responsive check at 375px and 1280px — no horizontal overflow, every control operable
-- ✅ **CP 8a** `make web-build && make run` — register through the browser, land on the shell, see email/timezone, log out
-- ✅ **CP 8b** change timezone and password through the UI; after password change, back to login
-- ✅ **CP 8c** renders clean at 375px and 1280px
+- [x] 8.1  `web/` — Vite 7 + React 19 + TS scaffold; `src/api.ts` typed client (same-origin `fetch`, CSRF token read from cookie → `X-CSRF-Token`); `react-router-dom` v7 added
+- [x] 8.2  Register screen — email, password (min 12), timezone pre-filled from `Intl.DateTimeFormat().resolvedOptions().timeZone`; field-level errors
+- [x] 8.3  Login screen — email, password; generic error, 429 message
+- [x] 8.4  Authenticated shell — email + timezone, change-timezone form, change-password form, log out; no product features
+- [x] 8.5  Route guards in `App.tsx` — auth state from `GET /api/account` on load (`auth.tsx`); logged-out → `/login`, logged-in → `/` from auth pages
+- [x] 8.6  `web/embed.go` `//go:embed all:dist`; `httpx.SPA` serves assets + falls back to `index.html`; `cmd/server` mounts it at `/`. `web/dist/.gitkeep` (via `web/public/`) keeps it compiling pre-build
+- [x] 8.7  `styles.css` — single stylesheet, max-width card, one media query, dark-mode; targets 375 / 1280 (not visually verified — see below)
+- [~] **CP 8a/8b** register → shell → change tz / password → logout: **API paths all verified** via curl + Go tests; the **browser click-through needs a human** (no browser here). `make web-build && PORT=8090 ./bin/server` serves it; `/`, `/login`, `/assets/*.js` all 200, `/api/*` unaffected.
+- [~] **CP 8c** responsive: CSS written for it; **needs a visual check at 375 / 1280** (or a Playwright test — a deliberate dep decision).
 
-## Phase 9 — CI
+## Phase 9 — CI  ✅ written (green pending first push — no remote configured)
 
-- [ ] 9.1  `.github/workflows/ci.yml` — Postgres service; steps: `go build`, `go vet`, `golangci-lint`, `go test ./...`, `sqlc diff`, `web` typecheck + build
-- [ ] 9.2  Runs on push + PR
-- ✅ **CP 9** the pipeline is green on a pushed branch
+- [x] 9.1  `.github/workflows/ci.yml` — `backend` job (Postgres 16 service; `go build`, `go vet`, `golangci-lint` v2.13.2, `sqlc diff`, `go test`) + `frontend` job (`pnpm typecheck`, `pnpm build`)
+- [x] 9.2  Runs on push to `main` and every PR
+- [~] **CP 9** locally equivalent commands all pass (`sqlc diff` clean, tests green with CI-style `TEST_DATABASE_URL`); **goes green once pushed to GitHub** — repo has no remote yet
 
 ### M1 done when
 
