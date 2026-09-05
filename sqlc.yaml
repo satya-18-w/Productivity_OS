@@ -18,6 +18,22 @@ sql:
             go_type: "string"
   - engine: "postgresql"
     schema: "db/migrations"
+    queries: "internal/categories/queries.sql"
+    gen:
+      go:
+        package: "categoriesdb"
+        out: "internal/categories/categoriesdb"
+        sql_package: "pgx/v5"
+        emit_json_tags: false
+        emit_interface: true
+        emit_empty_slices: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "citext"
+            go_type: "string"
+  - engine: "postgresql"
+    schema: "db/migrations"
     queries: "internal/timeline/queries.sql"
     gen:
       go:
@@ -71,6 +87,38 @@ sql:
       go:
         package: "goalsdb"
         out: "internal/goals/goalsdb"
+        sql_package: "pgx/v5"
+        emit_json_tags: false
+        emit_interface: true
+        emit_empty_slices: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "citext"
+            go_type: "string"
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "internal/notes/queries.sql"
+    gen:
+      go:
+        package: "notesdb"
+        out: "internal/notes/notesdb"
+        sql_package: "pgx/v5"
+        emit_json_tags: false
+        emit_interface: true
+        emit_empty_slices: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "citext"
+            go_type: "string"
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "internal/reviews/queries.sql"
+    gen:
+      go:
+        package: "reviewsdb"
+        out: "internal/reviews/reviewsdb"
         sql_package: "pgx/v5"
         emit_json_tags: false
         emit_interface: true

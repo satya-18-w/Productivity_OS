@@ -22,13 +22,46 @@ const (
 )
 
 type service struct {
-	pool *pgxpool.Pool
-	q    *tasksdb.Queries
+	pool  *pgxpool.Pool
+	q     *tasksdb.Queries
+	cats  CategoryChecker
+	goals GoalChecker
 }
 
-// NewService builds the tasks service over a connection pool.
-func NewService(pool *pgxpool.Pool) Service {
-	return &service{pool: pool, q: tasksdb.New(pool)}
+// NewService builds the tasks service over a connection pool. cats validates a
+// category_id a caller assigns (wired to categories.Service by cmd/server —
+// ADR-0009); goals validates a goal_id a caller links (wired to goals.Service —
+// MX3).
+func NewService(pool *pgxpool.Pool, cats CategoryChecker, goals GoalChecker) Service {
+	return &service{pool: pool, q: tasksdb.New(pool), cats: cats, goals: goals}
+}
+
+func (s *service) assertAssignableCategory(ctx context.Context, accountID uuid.UUID, categoryID *uuid.UUID) error {
+	if categoryID == nil {
+		return nil
+	}
+	ok, err := s.cats.AssignableToAccount(ctx, accountID, *categoryID)
+	if err != nil {
+		return fmt.Errorf("check category: %w", err)
+	}
+	if !ok {
+		return &ValidationError{Fields: map[string]string{"category_id": "category not found or archived"}}
+	}
+	return nil
+}
+
+func (s *service) assertAssignableGoal(ctx context.Context, accountID uuid.UUID, goalID *uuid.UUID) error {
+	if goalID == nil {
+		return nil
+	}
+	ok, err := s.goals.AssignableToAccount(ctx, accountID, *goalID)
+	if err != nil {
+		return fmt.Errorf("check goal: %w", err)
+	}
+	if !ok {
+		return &ValidationError{Fields: map[string]string{"goal_id": "goal not found"}}
+	}
+	return nil
 }
 
 func validateInput(in TaskInput) (TaskInput, *ValidationError) {
@@ -45,16 +78,33 @@ func validateInput(in TaskInput) (TaskInput, *ValidationError) {
 		fields["description"] = "description must be at most 5000 characters"
 	}
 
+	if in.Priority != nil && !validPriority(*in.Priority) {
+		fields["priority"] = "must be HIGH, MEDIUM, or LOW"
+	}
+
 	if len(fields) > 0 {
 		return TaskInput{}, &ValidationError{Fields: fields}
 	}
-	return TaskInput{Title: title, Description: strings.TrimSpace(in.Description), DueDate: in.DueDate}, nil
+	return TaskInput{
+		Title:       title,
+		Description: strings.TrimSpace(in.Description),
+		DueDate:     in.DueDate,
+		CategoryID:  in.CategoryID,
+		GoalID:      in.GoalID,
+		Priority:    in.Priority,
+	}, nil
 }
 
 func (s *service) CreateTask(ctx context.Context, accountID uuid.UUID, raw TaskInput) (Task, error) {
 	in, verr := validateInput(raw)
 	if verr != nil {
 		return Task{}, verr
+	}
+	if err := s.assertAssignableCategory(ctx, accountID, in.CategoryID); err != nil {
+		return Task{}, err
+	}
+	if err := s.assertAssignableGoal(ctx, accountID, in.GoalID); err != nil {
+		return Task{}, err
 	}
 
 	var task Task
@@ -65,11 +115,14 @@ func (s *service) CreateTask(ctx context.Context, accountID uuid.UUID, raw TaskI
 			Description: pgText(in.Description),
 			DueDate:     pgDate(in.DueDate),
 			State:       string(Backlog),
+			CategoryID:  toPgUUID(in.CategoryID),
+			GoalID:      toPgUUID(in.GoalID),
+			Priority:    toPgPriority(in.Priority),
 		})
 		if err != nil {
 			return fmt.Errorf("insert task: %w", err)
 		}
-		task = toTask(row.ID, row.Title, row.Description, row.DueDate, row.State, row.CreatedAt, row.UpdatedAt)
+		task = toTask(row.ID, row.Title, row.Description, row.DueDate, row.State, row.CategoryID, row.GoalID, row.Priority, row.CreatedAt, row.UpdatedAt)
 
 		return q.RecordTransition(ctx, tasksdb.RecordTransitionParams{
 			TaskID:    row.ID,
@@ -89,12 +142,21 @@ func (s *service) UpdateTask(ctx context.Context, accountID, taskID uuid.UUID, r
 	if verr != nil {
 		return verr
 	}
+	if err := s.assertAssignableCategory(ctx, accountID, in.CategoryID); err != nil {
+		return err
+	}
+	if err := s.assertAssignableGoal(ctx, accountID, in.GoalID); err != nil {
+		return err
+	}
 	rows, err := s.q.UpdateTaskFields(ctx, tasksdb.UpdateTaskFieldsParams{
 		AccountID:   accountID,
 		ID:          taskID,
 		Title:       in.Title,
 		Description: pgText(in.Description),
 		DueDate:     pgDate(in.DueDate),
+		CategoryID:  toPgUUID(in.CategoryID),
+		GoalID:      toPgUUID(in.GoalID),
+		Priority:    toPgPriority(in.Priority),
 	})
 	if err != nil {
 		return fmt.Errorf("update task: %w", err)
@@ -155,7 +217,7 @@ func (s *service) Board(ctx context.Context, accountID uuid.UUID) (Board, error)
 
 	byState := map[State][]Task{}
 	for _, r := range rows {
-		t := toTask(r.ID, r.Title, r.Description, r.DueDate, r.State, r.CreatedAt, r.UpdatedAt)
+		t := toTask(r.ID, r.Title, r.Description, r.DueDate, r.State, r.CategoryID, r.GoalID, r.Priority, r.CreatedAt, r.UpdatedAt)
 		byState[t.State] = append(byState[t.State], t)
 	}
 
@@ -168,6 +230,72 @@ func (s *service) Board(ctx context.Context, accountID uuid.UUID) (Board, error)
 		board.Columns[i] = col
 	}
 	return board, nil
+}
+
+func (s *service) CountByCategory(ctx context.Context, accountID uuid.UUID) (map[uuid.UUID]int, error) {
+	rows, err := s.q.CountTasksByCategory(ctx, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("count tasks by category: %w", err)
+	}
+	out := make(map[uuid.UUID]int, len(rows))
+	for _, r := range rows {
+		if id := fromPgUUID(r.CategoryID); id != nil {
+			out[*id] = int(r.Total)
+		}
+	}
+	return out, nil
+}
+
+func (s *service) DoneCountInRange(ctx context.Context, accountID uuid.UUID, from, to time.Time) (int, error) {
+	n, err := s.q.DoneTaskCountInRange(ctx, tasksdb.DoneTaskCountInRangeParams{
+		AccountID:   accountID,
+		FromInstant: pgtype.Timestamptz{Time: from, Valid: true},
+		ToInstant:   pgtype.Timestamptz{Time: to, Valid: true},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("done count in range: %w", err)
+	}
+	return int(n), nil
+}
+
+func (s *service) ProgressByGoal(ctx context.Context, accountID uuid.UUID) (done, total map[uuid.UUID]int, err error) {
+	rows, err := s.q.ProgressByGoal(ctx, accountID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("progress by goal: %w", err)
+	}
+	done = make(map[uuid.UUID]int, len(rows))
+	total = make(map[uuid.UUID]int, len(rows))
+	for _, r := range rows {
+		id := fromPgUUID(r.GoalID)
+		if id == nil {
+			continue
+		}
+		done[*id] = int(r.Done)
+		total[*id] = int(r.Total)
+	}
+	return done, total, nil
+}
+
+func (s *service) AssignableToAccount(ctx context.Context, accountID, taskID uuid.UUID) (bool, error) {
+	n, err := s.q.CountAssignableTask(ctx, tasksdb.CountAssignableTaskParams{
+		AccountID: accountID, ID: taskID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("check task: %w", err)
+	}
+	return n > 0, nil
+}
+
+func (s *service) CategoriesForTasks(ctx context.Context, accountID uuid.UUID) (map[uuid.UUID]*uuid.UUID, error) {
+	rows, err := s.q.TaskCategories(ctx, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("task categories: %w", err)
+	}
+	out := make(map[uuid.UUID]*uuid.UUID, len(rows))
+	for _, r := range rows {
+		out[r.ID] = fromPgUUID(r.CategoryID)
+	}
+	return out, nil
 }
 
 func (s *service) inTx(ctx context.Context, fn func(*tasksdb.Queries) error) error {
@@ -186,14 +314,17 @@ func (s *service) inTx(ctx context.Context, fn func(*tasksdb.Queries) error) err
 	return nil
 }
 
-func toTask(id uuid.UUID, title string, desc pgtype.Text, due pgtype.Date, state string, created, updated pgtype.Timestamptz) Task {
+func toTask(id uuid.UUID, title string, desc pgtype.Text, due pgtype.Date, state string, category, goal pgtype.UUID, priority pgtype.Text, created, updated pgtype.Timestamptz) Task {
 	t := Task{
-		ID:        id,
-		Title:     title,
-		State:     State(state),
-		DueDate:   fromPgDate(due),
-		CreatedAt: created.Time.UTC().Format(time.RFC3339),
-		UpdatedAt: updated.Time.UTC().Format(time.RFC3339),
+		ID:         id,
+		Title:      title,
+		State:      State(state),
+		DueDate:    fromPgDate(due),
+		CategoryID: fromPgUUID(category),
+		GoalID:     fromPgUUID(goal),
+		Priority:   fromPgPriority(priority),
+		CreatedAt:  created.Time.UTC().Format(time.RFC3339),
+		UpdatedAt:  updated.Time.UTC().Format(time.RFC3339),
 	}
 	if desc.Valid {
 		t.Description = desc.String
@@ -201,11 +332,41 @@ func toTask(id uuid.UUID, title string, desc pgtype.Text, due pgtype.Date, state
 	return t
 }
 
+func toPgUUID(id *uuid.UUID) pgtype.UUID {
+	if id == nil {
+		return pgtype.UUID{}
+	}
+	return pgtype.UUID{Bytes: *id, Valid: true}
+}
+
+func fromPgUUID(v pgtype.UUID) *uuid.UUID {
+	if !v.Valid {
+		return nil
+	}
+	id := uuid.UUID(v.Bytes)
+	return &id
+}
+
 func pgText(s string) pgtype.Text {
 	if s == "" {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: s, Valid: true}
+}
+
+func toPgPriority(p *Priority) pgtype.Text {
+	if p == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: string(*p), Valid: true}
+}
+
+func fromPgPriority(v pgtype.Text) *Priority {
+	if !v.Valid {
+		return nil
+	}
+	p := Priority(v.String)
+	return &p
 }
 
 func pgDate(d *timezone.Date) pgtype.Date {

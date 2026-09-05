@@ -1,0 +1,167 @@
+/* ============================================================================
+   Reports (Phase 9) — docs/design/screens/analytics.md
+   Five fixed reports over a chosen date range. No charting library: plain CSS
+   bars, categorical colour reused from the category palette, literal values
+   always shown as text alongside every bar (dataviz skill, product principle
+   P3 — numbers are the point, charts are secondary).
+   ========================================================================== */
+
+.report-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  margin-block-end: var(--sp-3);
+}
+
+.report-range__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-inline-start: auto;
+}
+
+.report-sample-note {
+  margin-block-end: var(--sp-5);
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+/* analytics.md: report cards 2-up → 1-up. 1024px mirrors breakpoints.ts
+   `laptop` as a literal (the established habits.css pattern — CSS cannot
+   read the TS const, so no new token). Two columns give the 360px-min
+   totals table room to scroll in-container instead of clipping mid-column. */
+@media (min-width: 1024px) {
+  .reports-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.report-caption {
+  margin-block: 0 var(--sp-3);
+}
+
+/* --- Time by category: horizontal bars --------------------------------- */
+
+.report-hbars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.report-hbar {
+  display: grid;
+  grid-template-columns: 8rem 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.report-hbar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+
+.report-hbar__track {
+  block-size: var(--sp-4);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.report-hbar__fill {
+  display: block;
+  block-size: 100%;
+  border-radius: var(--radius-full);
+  min-width: 2px;
+}
+
+.report-hbar__value {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* --- Habit completion: name + progress bar + figure --------------------- */
+
+.report-habit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.report-habit-row {
+  display: grid;
+  grid-template-columns: 8rem 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.report-habit-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+
+.report-habit-row__figure {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* --- Daily actual totals: vertical bars, scrollable --------------------- */
+
+.report-vbars__scroll {
+  overflow-x: auto;
+}
+
+.report-vbars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  block-size: 10rem;
+  min-width: max-content;
+}
+
+.report-vbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-1);
+  inline-size: 1.75rem;
+  block-size: 100%;
+}
+
+.report-vbar__bar {
+  inline-size: 100%;
+  min-block-size: 2px;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: var(--brand);
+}
+
+.report-vbar__label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}

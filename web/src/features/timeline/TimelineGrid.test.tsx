@@ -12,6 +12,7 @@ function block(over: Partial<PositionedBlock>): PositionedBlock {
     ends_at: "",
     category_id: "c1",
     category_name: "Deep Work",
+    task_id: null,
     start_minute: 540, // 09:00
     end_minute: 660, // 11:00
     from_prev_day: false,

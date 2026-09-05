@@ -34,3 +34,30 @@ owns. Covered by automated tests.
 
 `go build` · `go vet` · `golangci-lint run` (0 issues) · `sqlc diff` (clean) ·
 `go test ./...` (10 packages) · `pnpm typecheck` · `pnpm build` — all green.
+
+---
+
+## Addendum 2026-09-05 — `GET /api/habits/week` (batched "This Week" grid)
+
+**Scope:** `habits.Service.Week` and the new `GET /api/habits/week?date=` route — a
+pure optimization requested in `docs/left.md` Phase 6 (frontend was firing 7
+parallel `GET /api/habits?date=` calls; same class of fix as the MX5 timeline range
+endpoint). No new schema, no new `v1.md` scope — it returns exactly what `ListActive`
+already computes per habit, batched over one ISO week instead of one call per day.
+
+**Verdict: no findings.** `Week` reuses `ListActiveHabits`/`ListArchivedHabits`/
+`ListCompletionDatesSince` — the same three account-scoped queries `ListActive`
+already uses, called with the same `accountID` throughout. No new query shape, no
+new table, no new cross-module dependency. The streak computation reuses the
+existing pure `currentStreak` function unchanged; the only new logic is filtering
+the same completion set down to the requested week's 7 dates for the `Completed`
+field, which cannot broaden what account-scoped data was already fetched.
+
+Re-verified: `go build/vet/test` (18 packages green, including `TestWeek`,
+`TestWeek_StreakLookbackExceedsWeekWindow`, `TestHabitEndpoint_Week`),
+`golangci-lint` (0 issues), `sqlc diff` (clean — no schema change, no new queries),
+`gofmt -l` (clean). CP walked live via curl: a habit marked complete today,
+`GET /api/habits/week?date=<today>` returned the correct Monday-first `week_start`,
+all 7 `days`, the habit's `current_streak: 1` and `completed` containing today's
+date, matching `docs/left.md`'s expected shape field-for-field; a missing `date`
+parameter correctly rejected with `400`.

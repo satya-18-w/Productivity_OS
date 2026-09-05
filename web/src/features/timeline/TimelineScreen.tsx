@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   api,
@@ -6,30 +6,52 @@ import {
   type DayComparison,
   type DayTimeline,
   type PositionedBlock,
+  type Task,
 } from "../../api";
 import { ScreenLayout } from "../../shell/ScreenLayout";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { IconButton } from "../../components/ui/IconButton";
-import { Input } from "../../components/ui/Input";
+import { SplitButton } from "../../components/ui/SplitButton";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { ErrorState } from "../../components/productivity/states";
 import { MiniCalendar } from "../../components/date/MiniCalendar";
-import { ChevronDownIcon } from "../../components/ui/icons";
-import { todayISO, shiftDays, formatFullDate, parseISODate } from "../../components/date/dateUtils";
+import { DateStepper } from "../../components/date/DateStepper";
+import {
+  todayISO,
+  formatFullDate,
+  formatMonthLabel,
+  formatShortDate,
+  parseISODate,
+  shiftDays,
+  shiftMonths,
+  isoWeekRange,
+} from "../../components/date/dateUtils";
 import { TimelineGrid } from "./TimelineGrid";
 import { AgendaList } from "./AgendaList";
+import { TodayTasks } from "./TodayTasks";
 import { ComparisonCard } from "./ComparisonCard";
+import { PomodoroCard } from "./PomodoroCard";
+import { WeekView } from "./WeekView";
+import { MonthView } from "./MonthView";
 import { BlockDialog, type BlockDialogTarget } from "./BlockDialog";
 import { nowMinutes } from "./timelineFormat";
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
-type View = "day" | "agenda";
+type View = "day" | "agenda" | "week" | "month";
 const VIEW_OPTIONS = [
   { value: "day", label: "Day" },
   { value: "agenda", label: "Agenda" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
 ] as const;
+
+/** `‹`/`›` step size per view (G2 — Week/Month step by their own unit). */
+function stepDate(view: View, date: string, direction: -1 | 1): string {
+  if (view === "week") return shiftDays(date, direction * 7);
+  if (view === "month") return shiftMonths(date, direction);
+  return shiftDays(date, direction);
+}
 
 export function TimelineScreen() {
   const [params, setParams] = useSearchParams();
@@ -39,13 +61,20 @@ export function TimelineScreen() {
     rawDate && ISO_RE.test(rawDate) && !Number.isNaN(parseISODate(rawDate).getTime())
       ? rawDate
       : todayISO();
-  const view: View = params.get("view") === "agenda" ? "agenda" : "day";
+  const rawView = params.get("view");
+  const view: View = rawView === "agenda" || rawView === "week" || rawView === "month" ? rawView : "day";
 
   const [timeline, setTimeline] = useState<DayTimeline | null>(null);
   const [comparison, setComparison] = useState<DayComparison | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState(false);
   const [dialog, setDialog] = useState<BlockDialogTarget | null>(null);
+  // Bumped after a save/delete from a Week/Month block dialog — those views
+  // manage their own fetch internally, keyed on their date range, so a
+  // fresh key is the simplest way to make them refetch (they don't share
+  // `timeline`/`load` below, which only covers Day/Agenda's single date).
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const patchParams = useCallback(
     (mut: (p: URLSearchParams) => void) => {
@@ -69,18 +98,30 @@ export function TimelineScreen() {
     (v: View) => patchParams((p) => (v === "day" ? p.delete("view") : p.set("view", v))),
     [patchParams],
   );
+  /** Week/Month's day-header "jump to this date" — switches to Day atomically. */
+  const jumpToDay = useCallback(
+    (iso: string) =>
+      patchParams((p) => {
+        p.delete("view");
+        if (iso === todayISO()) p.delete("date");
+        else p.set("date", iso);
+      }),
+    [patchParams],
+  );
 
   const load = useCallback(async () => {
     setError(false);
     try {
-      const [tl, cmp, cats] = await Promise.all([
+      const [tl, cmp, cats, board] = await Promise.all([
         api.timeline(date),
         api.comparison(date),
         api.listCategories(),
+        api.board(),
       ]);
       setTimeline(tl);
       setComparison(cmp);
       setCategories(cats);
+      setTasks(board.columns.flatMap((c) => c.tasks));
     } catch {
       setError(true);
     }
@@ -90,47 +131,90 @@ export function TimelineScreen() {
     void load();
   }, [load]);
 
+  const taskTitleById = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks]);
+
   const isToday = date === todayISO();
   const pick = (b: PositionedBlock) => setDialog({ mode: "edit", block: b });
 
+  // A task's "Scheduled blocks" list deep-links here as
+  // ?date=<local_date>&openBlock=<id> (the reverse of "Open task" on a linked
+  // block) — once that date's timeline has loaded, open the matching block's
+  // dialog, then drop the param so it doesn't reopen on a later re-render.
+  useEffect(() => {
+    const openId = params.get("openBlock");
+    if (!openId || !timeline) return;
+    const found = [...timeline.planned, ...timeline.actual].find((b) => b.id === openId);
+    if (found) pick(found);
+    patchParams((p) => p.delete("openBlock"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pick/patchParams are stable per render intent
+  }, [params, timeline]);
+
+  const headerTitle =
+    view === "week"
+      ? (() => {
+          const [mon, sun] = isoWeekRange(date);
+          return `${formatShortDate(mon)} – ${formatShortDate(sun)}`;
+        })()
+      : view === "month"
+        ? formatMonthLabel(date)
+        : formatFullDate(date);
+
   return (
     <ScreenLayout
-      railLabel="Timeline calendar"
+      railLabel="Timeline calendar and tasks"
       rail={
-        <Card padding="compact">
-          <MiniCalendar value={date} onChange={setDate} />
-        </Card>
+        <>
+          <Card padding="compact">
+            <MiniCalendar value={date} onChange={setDate} />
+          </Card>
+          {view === "day" && <PomodoroCard />}
+          <TodayTasks date={date} />
+        </>
       }
     >
       <PageHeader
         eyebrow="Timeline"
-        title={formatFullDate(date)}
+        title={headerTitle}
         subtitle="Plan the day as time blocks and log what actually happened."
-        actions={<Button onClick={() => setDialog({ mode: "new" })}>Add block</Button>}
+        actions={
+          <SplitButton
+            onPrimary={() => setDialog({ mode: "new" })}
+            menuLabel="Add block options"
+            items={[
+              {
+                key: "planned",
+                label: "Add planned block",
+                onSelect: () => setDialog({ mode: "new", kind: "planned" }),
+              },
+              {
+                key: "actual",
+                label: "Add actual block",
+                onSelect: () => setDialog({ mode: "new", kind: "actual" }),
+              },
+            ]}
+          >
+            Add block
+          </SplitButton>
+        }
       />
 
       <div className="tl2__toolbar">
         <SegmentedControl label="Timeline view" options={VIEW_OPTIONS} value={view} onChange={setView} />
         <span style={{ flex: 1 }} />
-        <IconButton label="Previous day" size="sm" onClick={() => setDate(shiftDays(date, -1))}>
-          <ChevronDownIcon style={{ transform: "rotate(90deg)" }} width={16} height={16} />
-        </IconButton>
-        <Input
-          type="date"
-          aria-label="Date"
+        <DateStepper
           value={date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-          style={{ width: "auto" }}
+          onChange={setDate}
+          onStep={(direction) => setDate(stepDate(view, date, direction))}
+          prevLabel={view === "week" ? "Previous week" : view === "month" ? "Previous month" : "Previous day"}
+          nextLabel={view === "week" ? "Next week" : view === "month" ? "Next month" : "Next day"}
         />
-        <IconButton label="Next day" size="sm" onClick={() => setDate(shiftDays(date, 1))}>
-          <ChevronDownIcon style={{ transform: "rotate(-90deg)" }} width={16} height={16} />
-        </IconButton>
-        <Button variant="secondary" size="sm" onClick={() => setDate(todayISO())} disabled={isToday}>
-          Today
-        </Button>
       </div>
 
-      {error ? (
+      {view === "week" ? (
+        <WeekView key={refreshKey} date={date} onPick={pick} onJumpToDay={jumpToDay} />
+      ) : view === "month" ? (
+        <MonthView key={refreshKey} date={date} onPick={pick} onJumpToDay={jumpToDay} />
+      ) : error ? (
         <ErrorState message="Could not load the timeline." action={<Button onClick={load}>Retry</Button>} />
       ) : !timeline ? (
         <p className="muted">Loading…</p>
@@ -141,7 +225,9 @@ export function TimelineScreen() {
               planned={timeline.planned}
               actual={timeline.actual}
               now={isToday ? nowMinutes() : null}
+              taskTitleById={taskTitleById}
               onPick={pick}
+              onAdd={() => setDialog({ mode: "new" })}
             />
           ) : (
             <div className="tl2">
@@ -149,6 +235,7 @@ export function TimelineScreen() {
                 planned={timeline.planned}
                 actual={timeline.actual}
                 now={isToday ? nowMinutes() : null}
+                taskTitleById={taskTitleById}
                 onPick={pick}
               />
             </div>
@@ -163,10 +250,12 @@ export function TimelineScreen() {
           target={dialog}
           date={date}
           categories={categories}
+          tasks={tasks}
           onClose={() => setDialog(null)}
           onSaved={async () => {
             setDialog(null);
             await load();
+            setRefreshKey((k) => k + 1); // Week/Month manage their own fetch; force a remount to refresh
           }}
         />
       )}

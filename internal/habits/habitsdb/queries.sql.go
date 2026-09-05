@@ -12,31 +12,121 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const completionCountsInRange = `-- name: CompletionCountsInRange :many
+SELECT h.id AS habit_id, h.name,
+       count(hc.id) FILTER (WHERE hc.on_date BETWEEN $2 AND $3) AS total
+FROM habits h
+LEFT JOIN habit_completions hc ON hc.habit_id = h.id
+WHERE h.account_id = $1
+GROUP BY h.id, h.name
+ORDER BY lower(h.name)
+`
+
+type CompletionCountsInRangeParams struct {
+	AccountID uuid.UUID
+	FromDate  pgtype.Date
+	ToDate    pgtype.Date
+}
+
+type CompletionCountsInRangeRow struct {
+	HabitID uuid.UUID
+	Name    string
+	Total   int64
+}
+
+// Active and archived habits alike, so a past week's history is complete even for
+// a habit archived since (v1.md, M6 decision). A habit with zero completions in
+// the range still appears, with total = 0.
+func (q *Queries) CompletionCountsInRange(ctx context.Context, arg CompletionCountsInRangeParams) ([]CompletionCountsInRangeRow, error) {
+	rows, err := q.db.Query(ctx, completionCountsInRange, arg.AccountID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CompletionCountsInRangeRow{}
+	for rows.Next() {
+		var i CompletionCountsInRangeRow
+		if err := rows.Scan(&i.HabitID, &i.Name, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countHabitsByCategory = `-- name: CountHabitsByCategory :many
+SELECT category_id, count(*) AS total
+FROM habits
+WHERE account_id = $1 AND category_id IS NOT NULL AND archived_at IS NULL
+GROUP BY category_id
+`
+
+type CountHabitsByCategoryRow struct {
+	CategoryID pgtype.UUID
+	Total      int64
+}
+
+// Active habits only — archived ones are already hidden from the habits list, so
+// they should not inflate a category's shown count.
+func (q *Queries) CountHabitsByCategory(ctx context.Context, accountID uuid.UUID) ([]CountHabitsByCategoryRow, error) {
+	rows, err := q.db.Query(ctx, countHabitsByCategory, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountHabitsByCategoryRow{}
+	for rows.Next() {
+		var i CountHabitsByCategoryRow
+		if err := rows.Scan(&i.CategoryID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createHabit = `-- name: CreateHabit :one
-INSERT INTO habits (account_id, name)
-VALUES ($1, $2)
-RETURNING id, name, archived_at, created_at
+INSERT INTO habits (account_id, name, category_id, target)
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, archived_at, category_id, target, created_at
 `
 
 type CreateHabitParams struct {
-	AccountID uuid.UUID
-	Name      string
+	AccountID  uuid.UUID
+	Name       string
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
 }
 
 type CreateHabitRow struct {
 	ID         uuid.UUID
 	Name       string
 	ArchivedAt pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
 	CreatedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) CreateHabit(ctx context.Context, arg CreateHabitParams) (CreateHabitRow, error) {
-	row := q.db.QueryRow(ctx, createHabit, arg.AccountID, arg.Name)
+	row := q.db.QueryRow(ctx, createHabit,
+		arg.AccountID,
+		arg.Name,
+		arg.CategoryID,
+		arg.Target,
+	)
 	var i CreateHabitRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.ArchivedAt,
+		&i.CategoryID,
+		&i.Target,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -60,8 +150,57 @@ func (q *Queries) HabitBelongsToAccount(ctx context.Context, arg HabitBelongsToA
 	return count, err
 }
 
+const habitHistory = `-- name: HabitHistory :many
+SELECT h.id AS habit_id, h.name, h.archived_at, hc.on_date
+FROM habits h
+LEFT JOIN habit_completions hc
+    ON hc.habit_id = h.id AND hc.on_date BETWEEN $2 AND $3
+WHERE h.account_id = $1
+ORDER BY lower(h.name), hc.on_date
+`
+
+type HabitHistoryParams struct {
+	AccountID uuid.UUID
+	FromDate  pgtype.Date
+	ToDate    pgtype.Date
+}
+
+type HabitHistoryRow struct {
+	HabitID    uuid.UUID
+	Name       string
+	ArchivedAt pgtype.Timestamptz
+	OnDate     pgtype.Date
+}
+
+// One row per (habit, completion-in-range) pair; a habit with no completions in
+// range still appears once, with on_date NULL (R2, docs/left.md Phase 6 heatmap).
+func (q *Queries) HabitHistory(ctx context.Context, arg HabitHistoryParams) ([]HabitHistoryRow, error) {
+	rows, err := q.db.Query(ctx, habitHistory, arg.AccountID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HabitHistoryRow{}
+	for rows.Next() {
+		var i HabitHistoryRow
+		if err := rows.Scan(
+			&i.HabitID,
+			&i.Name,
+			&i.ArchivedAt,
+			&i.OnDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveHabits = `-- name: ListActiveHabits :many
-SELECT id, name, archived_at, created_at
+SELECT id, name, archived_at, category_id, target, created_at
 FROM habits
 WHERE account_id = $1 AND archived_at IS NULL
 ORDER BY lower(name), created_at
@@ -71,6 +210,8 @@ type ListActiveHabitsRow struct {
 	ID         uuid.UUID
 	Name       string
 	ArchivedAt pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
 	CreatedAt  pgtype.Timestamptz
 }
 
@@ -87,6 +228,86 @@ func (q *Queries) ListActiveHabits(ctx context.Context, accountID uuid.UUID) ([]
 			&i.ID,
 			&i.Name,
 			&i.ArchivedAt,
+			&i.CategoryID,
+			&i.Target,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllCompletions = `-- name: ListAllCompletions :many
+SELECT habit_id, on_date
+FROM habit_completions
+WHERE account_id = $1
+ORDER BY habit_id, on_date
+`
+
+type ListAllCompletionsRow struct {
+	HabitID uuid.UUID
+	OnDate  pgtype.Date
+}
+
+// Every completion of every habit (active and archived), for M8 export
+// completeness.
+func (q *Queries) ListAllCompletions(ctx context.Context, accountID uuid.UUID) ([]ListAllCompletionsRow, error) {
+	rows, err := q.db.Query(ctx, listAllCompletions, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllCompletionsRow{}
+	for rows.Next() {
+		var i ListAllCompletionsRow
+		if err := rows.Scan(&i.HabitID, &i.OnDate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllHabits = `-- name: ListAllHabits :many
+SELECT id, name, archived_at, category_id, target, created_at
+FROM habits
+WHERE account_id = $1
+ORDER BY lower(name), created_at
+`
+
+type ListAllHabitsRow struct {
+	ID         uuid.UUID
+	Name       string
+	ArchivedAt pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
+	CreatedAt  pgtype.Timestamptz
+}
+
+// Active and archived, raw records, for M8 export completeness.
+func (q *Queries) ListAllHabits(ctx context.Context, accountID uuid.UUID) ([]ListAllHabitsRow, error) {
+	rows, err := q.db.Query(ctx, listAllHabits, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllHabitsRow{}
+	for rows.Next() {
+		var i ListAllHabitsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ArchivedAt,
+			&i.CategoryID,
+			&i.Target,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -100,7 +321,7 @@ func (q *Queries) ListActiveHabits(ctx context.Context, accountID uuid.UUID) ([]
 }
 
 const listArchivedHabits = `-- name: ListArchivedHabits :many
-SELECT id, name, archived_at, created_at
+SELECT id, name, archived_at, category_id, target, created_at
 FROM habits
 WHERE account_id = $1 AND archived_at IS NOT NULL
 ORDER BY lower(name), created_at
@@ -110,6 +331,8 @@ type ListArchivedHabitsRow struct {
 	ID         uuid.UUID
 	Name       string
 	ArchivedAt pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
 	CreatedAt  pgtype.Timestamptz
 }
 
@@ -126,6 +349,8 @@ func (q *Queries) ListArchivedHabits(ctx context.Context, accountID uuid.UUID) (
 			&i.ID,
 			&i.Name,
 			&i.ArchivedAt,
+			&i.CategoryID,
+			&i.Target,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -207,6 +432,26 @@ func (q *Queries) SetHabitArchived(ctx context.Context, arg SetHabitArchivedPara
 	return result.RowsAffected(), nil
 }
 
+const setHabitCategory = `-- name: SetHabitCategory :execrows
+UPDATE habits
+SET category_id = $3
+WHERE account_id = $1 AND id = $2
+`
+
+type SetHabitCategoryParams struct {
+	AccountID  uuid.UUID
+	ID         uuid.UUID
+	CategoryID pgtype.UUID
+}
+
+func (q *Queries) SetHabitCategory(ctx context.Context, arg SetHabitCategoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setHabitCategory, arg.AccountID, arg.ID, arg.CategoryID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const unmarkCompletion = `-- name: UnmarkCompletion :exec
 DELETE FROM habit_completions
 WHERE habit_id = $1 AND on_date = $2
@@ -220,4 +465,48 @@ type UnmarkCompletionParams struct {
 func (q *Queries) UnmarkCompletion(ctx context.Context, arg UnmarkCompletionParams) error {
 	_, err := q.db.Exec(ctx, unmarkCompletion, arg.HabitID, arg.OnDate)
 	return err
+}
+
+const updateHabitFields = `-- name: UpdateHabitFields :one
+UPDATE habits
+SET name = $3, target = $4
+WHERE account_id = $1 AND id = $2
+RETURNING id, name, archived_at, category_id, target, created_at
+`
+
+type UpdateHabitFieldsParams struct {
+	AccountID uuid.UUID
+	ID        uuid.UUID
+	Name      string
+	Target    pgtype.Text
+}
+
+type UpdateHabitFieldsRow struct {
+	ID         uuid.UUID
+	Name       string
+	ArchivedAt pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
+	CreatedAt  pgtype.Timestamptz
+}
+
+// Full replace of name + target (MX3 Phase 1) — the habit's only other editable
+// fields; category has its own endpoint (SetHabitCategory, ADR-0009).
+func (q *Queries) UpdateHabitFields(ctx context.Context, arg UpdateHabitFieldsParams) (UpdateHabitFieldsRow, error) {
+	row := q.db.QueryRow(ctx, updateHabitFields,
+		arg.AccountID,
+		arg.ID,
+		arg.Name,
+		arg.Target,
+	)
+	var i UpdateHabitFieldsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ArchivedAt,
+		&i.CategoryID,
+		&i.Target,
+		&i.CreatedAt,
+	)
+	return i, err
 }

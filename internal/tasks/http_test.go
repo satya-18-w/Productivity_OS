@@ -7,14 +7,22 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
+	"github.com/satya-18-w/productivity-os/internal/categories"
+	"github.com/satya-18-w/productivity-os/internal/goals"
 	"github.com/satya-18-w/productivity-os/internal/platform/pgtest"
 	"github.com/satya-18-w/productivity-os/internal/platform/reqctx"
 	"github.com/satya-18-w/productivity-os/internal/tasks"
 )
+
+type fakeZone struct{}
+
+func (fakeZone) Zone(context.Context, uuid.UUID) (*time.Location, error) { return time.UTC, nil }
 
 func stubProtector(accountID uuid.UUID) tasks.Protector {
 	return func(fn http.HandlerFunc) http.Handler {
@@ -25,14 +33,21 @@ func stubProtector(accountID uuid.UUID) tasks.Protector {
 }
 
 func httpSetup(t *testing.T) *httptest.Server {
+	srv, _, _ := httpSetupWithPool(t)
+	return srv
+}
+
+func httpSetupWithPool(t *testing.T) (*httptest.Server, *pgxpool.Pool, uuid.UUID) {
 	t.Helper()
 	pool := pgtest.Pool(t)
 	acc := newAccount(t, pool, "http@test")
 	mux := http.NewServeMux()
-	tasks.NewHandler(tasks.NewService(pool)).Mount(mux, stubProtector(acc), stubProtector(acc))
+	catSvc := categories.NewService(pool)
+	tasks.NewHandler(tasks.NewService(pool, catSvc, goals.NewService(pool, catSvc)), fakeZone{}).
+		Mount(mux, stubProtector(acc), stubProtector(acc))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, pool, acc
 }
 
 func do(t *testing.T, srv *httptest.Server, method, path, body string) (*http.Response, map[string]any) {
@@ -87,6 +102,72 @@ func TestTaskEndpoints(t *testing.T) {
 	// delete
 	resp, _ = do(t, srv, http.MethodDelete, "/api/tasks/"+id, "")
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+}
+
+func TestTaskEndpoints_Category(t *testing.T) {
+	srv, pool, acc := httpSetupWithPool(t)
+
+	var catID uuid.UUID
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`INSERT INTO categories (account_id, name) VALUES ($1, 'Deep Work') RETURNING id`, acc).Scan(&catID))
+
+	resp, body := do(t, srv, http.MethodPost, "/api/tasks", `{"title":"Ship it","category_id":"`+catID.String()+`"}`)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, catID.String(), body["category_id"])
+
+	resp, _ = do(t, srv, http.MethodPost, "/api/tasks",
+		`{"title":"x","category_id":"`+uuid.NewString()+`"}`)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "unknown category -> 400")
+
+	resp, _ = do(t, srv, http.MethodPost, "/api/tasks", `{"title":"x","category_id":"not-a-uuid"}`)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestTaskEndpoints_Priority(t *testing.T) {
+	srv := httpSetup(t)
+
+	resp, body := do(t, srv, http.MethodPost, "/api/tasks", `{"title":"Ship it","priority":"HIGH"}`)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, "HIGH", body["priority"])
+	id := body["id"].(string)
+
+	resp, _ = do(t, srv, http.MethodPatch, "/api/tasks/"+id, `{"title":"Ship it","priority":"LOW"}`)
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	_, board := do(t, srv, http.MethodGet, "/api/board", "")
+	cols := board["columns"].([]any)
+	backlog := cols[0].(map[string]any)["tasks"].([]any)
+	require.Equal(t, "LOW", backlog[0].(map[string]any)["priority"])
+
+	resp, _ = do(t, srv, http.MethodPost, "/api/tasks", `{"title":"x","priority":"URGENT"}`)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "invalid priority -> 400")
+}
+
+func TestThroughputEndpoint(t *testing.T) {
+	srv := httpSetup(t) // fakeZone => UTC
+
+	_, t1 := do(t, srv, http.MethodPost, "/api/tasks", `{"title":"one"}`)
+	_, t2 := do(t, srv, http.MethodPost, "/api/tasks", `{"title":"two"}`)
+	do(t, srv, http.MethodPut, "/api/tasks/"+t1["id"].(string)+"/state", `{"state":"DONE"}`)
+	do(t, srv, http.MethodPut, "/api/tasks/"+t2["id"].(string)+"/state", `{"state":"TODO"}`)
+	do(t, srv, http.MethodPut, "/api/tasks/"+t2["id"].(string)+"/state", `{"state":"DONE"}`)
+	// bounce t1 out and back into DONE — still counts once
+	do(t, srv, http.MethodPut, "/api/tasks/"+t1["id"].(string)+"/state", `{"state":"TODO"}`)
+	do(t, srv, http.MethodPut, "/api/tasks/"+t1["id"].(string)+"/state", `{"state":"DONE"}`)
+
+	today := time.Now().UTC().Format("2006-01-02")
+	resp, body := do(t, srv, http.MethodGet, "/api/tasks/throughput?from="+today+"&to="+today, "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, float64(2), body["done_count"])
+	require.Equal(t, today, body["from"])
+	require.Equal(t, today, body["to"])
+
+	// to before from -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/tasks/throughput?from="+today+"&to=2000-01-01", "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// malformed date -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/tasks/throughput?from=nope&to="+today, "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestBoardEndpoint(t *testing.T) {

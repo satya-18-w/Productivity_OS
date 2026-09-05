@@ -1,0 +1,160 @@
+/* ============================================================================
+   Habits — feature styles. Tokens only.
+   Views: Today (checklist) · This week (grid) · This month (heatmap) · All.
+   ========================================================================== */
+
+.habit-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.habit-toolbar__week {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.habit-toolbar__weeklabel {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  min-width: 8ch;
+  text-align: center;
+}
+
+.habit-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+@media (max-width: 640px) {
+  .habit-kpis { grid-template-columns: 1fr; }
+}
+
+/* --- streak glyph ------------------------------------------------------- */
+.habit-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.habit-streak__n { font-weight: var(--fw-semibold); }
+.habit-streak__flame { color: var(--streak); flex-shrink: 0; }
+
+/* --- last-30 count ------------------------------------------------------ */
+.habit-last30 {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- Today checklist -------------------------------------------------- */
+.habit-today__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 12px 2px;
+  border-top: 1px solid var(--border);
+}
+.habit-today__row:first-child { border-top: 0; }
+.habit-today__name { flex: 1; min-width: 0; font-weight: var(--fw-medium); }
+
+/* --- Week grid / Month heatmap shared scroll ------------------------- */
+.habit-grid__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.habit-grid {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 560px;
+}
+.habit-grid th,
+.habit-grid td { padding: 10px 8px; }
+.habit-grid thead th {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.habit-grid tbody tr { border-top: 1px solid var(--border); }
+.habit-grid tbody tr:first-child { border-top: 0; }
+
+.habit-grid__habit-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  text-align: left;
+  min-width: 150px;
+}
+.habit-grid__name { font-weight: var(--fw-medium); color: var(--text); }
+
+.habit-grid__day {
+  text-align: center;
+}
+.habit-grid__wd { display: block; }
+.habit-grid__dm {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.habit-grid__day--today .habit-grid__dm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.habit-grid__cell { text-align: center; }
+.habit-grid__cell .ui-toggle-circle { display: inline-flex; }
+
+/* --- Month heatmap --------------------------------------------------- */
+.habit-month { display: flex; flex-direction: column; gap: var(--sp-2); }
+.habit-month__note {
+  font-size: var(--fs-caption);
+  color: var(--warning);
+}
+.habit-month__table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+}
+.habit-month__table th,
+.habit-month__table td { padding: 3px 4px; }
+.habit-month__table thead th {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+}
+.habit-month__dayhead { text-align: center; font-variant-numeric: tabular-nums; }
+.habit-month__cell {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+.habit-month__cell--done { background: var(--success); }
+
+/* --- All habits ---------------------------------------------------- */
+.habit-all { display: flex; flex-direction: column; gap: var(--sp-5); }
+.habit-all__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 11px 2px;
+  border-top: 1px solid var(--border);
+}
+.habit-all__row:first-child { border-top: 0; }
+.habit-all__name { flex: 1; min-width: 0; font-weight: var(--fw-medium); }
+.habit-all__name--muted { color: var(--text-muted); }

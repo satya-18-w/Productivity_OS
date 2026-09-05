@@ -12,10 +12,60 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAssignableGoal = `-- name: CountAssignableGoal :one
+SELECT count(*)
+FROM goals
+WHERE account_id = $1 AND id = $2
+`
+
+type CountAssignableGoalParams struct {
+	AccountID uuid.UUID
+	ID        uuid.UUID
+}
+
+func (q *Queries) CountAssignableGoal(ctx context.Context, arg CountAssignableGoalParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAssignableGoal, arg.AccountID, arg.ID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countGoalsByCategory = `-- name: CountGoalsByCategory :many
+SELECT category_id, count(*) AS total
+FROM goals
+WHERE account_id = $1 AND category_id IS NOT NULL
+GROUP BY category_id
+`
+
+type CountGoalsByCategoryRow struct {
+	CategoryID pgtype.UUID
+	Total      int64
+}
+
+func (q *Queries) CountGoalsByCategory(ctx context.Context, accountID uuid.UUID) ([]CountGoalsByCategoryRow, error) {
+	rows, err := q.db.Query(ctx, countGoalsByCategory, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountGoalsByCategoryRow{}
+	for rows.Next() {
+		var i CountGoalsByCategoryRow
+		if err := rows.Scan(&i.CategoryID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createGoal = `-- name: CreateGoal :one
-INSERT INTO goals (account_id, title, description, target_date)
-VALUES ($1, $2, $3, $4)
-RETURNING id, title, description, target_date, progress, created_at, updated_at
+INSERT INTO goals (account_id, title, description, target_date, category_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, title, description, target_date, progress, category_id, created_at, updated_at
 `
 
 type CreateGoalParams struct {
@@ -23,6 +73,7 @@ type CreateGoalParams struct {
 	Title       string
 	Description pgtype.Text
 	TargetDate  pgtype.Date
+	CategoryID  pgtype.UUID
 }
 
 type CreateGoalRow struct {
@@ -31,6 +82,7 @@ type CreateGoalRow struct {
 	Description pgtype.Text
 	TargetDate  pgtype.Date
 	Progress    string
+	CategoryID  pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -41,6 +93,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (CreateG
 		arg.Title,
 		arg.Description,
 		arg.TargetDate,
+		arg.CategoryID,
 	)
 	var i CreateGoalRow
 	err := row.Scan(
@@ -49,6 +102,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (CreateG
 		&i.Description,
 		&i.TargetDate,
 		&i.Progress,
+		&i.CategoryID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -73,7 +127,7 @@ func (q *Queries) DeleteGoal(ctx context.Context, arg DeleteGoalParams) (int64, 
 }
 
 const listGoals = `-- name: ListGoals :many
-SELECT id, title, description, target_date, progress, created_at, updated_at
+SELECT id, title, description, target_date, progress, category_id, created_at, updated_at
 FROM goals
 WHERE account_id = $1
 ORDER BY created_at DESC, id
@@ -85,6 +139,7 @@ type ListGoalsRow struct {
 	Description pgtype.Text
 	TargetDate  pgtype.Date
 	Progress    string
+	CategoryID  pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -104,6 +159,7 @@ func (q *Queries) ListGoals(ctx context.Context, accountID uuid.UUID) ([]ListGoa
 			&i.Description,
 			&i.TargetDate,
 			&i.Progress,
+			&i.CategoryID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -119,7 +175,7 @@ func (q *Queries) ListGoals(ctx context.Context, accountID uuid.UUID) ([]ListGoa
 
 const updateGoalFields = `-- name: UpdateGoalFields :execrows
 UPDATE goals
-SET title = $3, description = $4, target_date = $5, updated_at = now()
+SET title = $3, description = $4, target_date = $5, category_id = $6, updated_at = now()
 WHERE account_id = $1 AND id = $2
 `
 
@@ -129,6 +185,7 @@ type UpdateGoalFieldsParams struct {
 	Title       string
 	Description pgtype.Text
 	TargetDate  pgtype.Date
+	CategoryID  pgtype.UUID
 }
 
 func (q *Queries) UpdateGoalFields(ctx context.Context, arg UpdateGoalFieldsParams) (int64, error) {
@@ -138,6 +195,7 @@ func (q *Queries) UpdateGoalFields(ctx context.Context, arg UpdateGoalFieldsPara
 		arg.Title,
 		arg.Description,
 		arg.TargetDate,
+		arg.CategoryID,
 	)
 	if err != nil {
 		return 0, err

@@ -81,3 +81,55 @@ consistency %, habit categories, sub-labels (or merge into name), motivational c
 §4.1 shell · §4.2 header · §4.3 view switcher · §4.5 buttons · §4.6 KPI card · §4.7 card ·
 §4.10 toggle-circle · §4.16 create/edit form · `requirements` §9 (+ Q9, Q11) ·
 `visual-principles.md` VP3, VP4, VP9, VP10.
+
+---
+
+## Phase 6 — Habits — Status: ✅ COMPLETE (2026-09-04)
+
+Route `/habits` → `HabitsScreen` (`web/src/features/habits/`). Backend: `api.habits(date?)`,
+`markHabit` / `unmarkHabit` / `archiveHabit` / `unarchiveHabit` / `createHabit`.
+
+- [x] `PageHeader` (eyebrow "Habits" + factual title/subtitle — **no** motivational copy,
+      VP3) + **Add habit** primary. `HabitDialog` = **name only** (§9).
+- [x] **View switcher** (`SegmentedControl`, `?view=` param): Today / This week / This
+      month / All habits.
+- [x] **KPI row** (V1-safe — **no** longest-streak, **no** consistency %): Completed
+      today N/M · Active habits · Best current streak (= max of the per-habit streaks).
+- [x] **Today view** — checklist: `ToggleCircle` (today), name, streak, kebab.
+- [x] **This week view** — the reference grid: rows = active habits, 7 dated weekday
+      columns (**Monday-first**, D8; today in a `--brand` pill), a `ToggleCircle` per cell,
+      Streak column, Actions kebab. Sticky habit-name column; scrolls in its own container.
+      Week nav (`‹ ›` / "This week", `?week=` param).
+- [x] **This month view** — 35-day heatmap per habit. **Backed by `mockHabitHistory()`**
+      with a visible "⚠ Sample data" note — the real endpoint is tracked in `docs/left.md`.
+- [x] **All habits view** — Active list + Archived section with **Unarchive** (history
+      preserved, Q11). Kebab on active rows = **Archive only** (rename/delete are not V1 —
+      see `docs/left.md`).
+- [x] Toggle any day (incl. future — Q9); optimistic UI + refetch for fresh streaks.
+- [x] Streak = plain number + a small **static** flame icon (`--streak` token; no
+      animation, VP3). `--streak` added to `tokens.css` (design-system.md §3.1 permits it).
+- [x] Responsive — KPI 3→1; grids scroll in-container; page never scrolls sideways.
+      Light + dark verified. No excluded feature (no longest-streak / consistency% /
+      habit-categories / sub-labels / motivational banner).
+- [x] Tests — `habitData` (4, incl. `fetchWeek`), `HabitTodayList` (4), `HabitWeekGrid`
+      (4), `HabitsScreen` (6). Full suite green.
+- [x] Browser-verified — Today / Week / Month / All at desktop + mobile + dark;
+      view switching, toggles, KPIs, archived list, sample-data note; no console errors.
+- [ ] Committed — pending product owner.
+
+### Backend gaps (tracked in `docs/left.md`)
+1. **`GET /api/habits/history`** — *required* for the "This month" heatmap (currently
+   mock). Swap point: `web/src/features/habits/habitData.ts` → `mockHabitHistory`.
+2. **`GET /api/habits/week`** — *optimisation*; the week grid makes 7 `GET /api/habits?date=`
+   calls today. Swap point: `habitData.ts` → `fetchWeek`.
+3. **rename / delete habit** — *not V1*; kebab offers Archive only.
+
+### Deferred
+Rail widgets from the reference (Your Streak dots, Habit Completion bar chart, Top Habits
+completion-rate) — completion-rate is a Reports (§13) metric; charts wait for the Reports
+spec / R1.
+
+### Bug fixed 2026-09-04 (found during a Timeline reference-accuracy audit, not a Habits-specific pass)
+The `ToggleCircle` completion control was unclickable by mouse/touch on every habit, every
+view (Today/Week) — its decorative ring painted on top of the real `<input>` and absorbed
+every click. See `design-system.md §4.10`.

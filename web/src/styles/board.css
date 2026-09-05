@@ -1,0 +1,109 @@
+/* ============================================================================
+   Board (Kanban) — feature styles. Tokens only.
+   Four fixed columns; move via drag OR the card's kebab menu (keyboard/touch).
+   ========================================================================== */
+
+.board2__scroll {
+  overflow-x: auto;
+  margin-inline: calc(var(--gutter) * -1);
+  padding-inline: var(--gutter);
+}
+
+.board2 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(240px, 1fr));
+  gap: var(--sp-3);
+  align-items: start;
+}
+
+.board2__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  min-height: 120px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.board2__col--dragover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.board2__col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 4px 6px 2px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.board2__card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  cursor: grab;
+  transition: box-shadow var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.board2__card:hover { box-shadow: var(--shadow-md); }
+.board2__card:active { cursor: grabbing; }
+.board2__card--dragging { opacity: 0.4; }
+
+.board2__card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.board2__card-title {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  padding: 0;
+}
+.board2__card-title:hover { color: var(--brand); }
+
+.board2__card-desc {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.board2__card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.board2__card-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.board2__card-due--overdue { color: var(--danger); font-weight: var(--fw-medium); }
+
+.board2__empty {
+  padding: var(--sp-3);
+  text-align: center;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}

@@ -12,14 +12,33 @@ import (
 )
 
 type Querier interface {
+	// Active and archived habits alike, so a past week's history is complete even for
+	// a habit archived since (v1.md, M6 decision). A habit with zero completions in
+	// the range still appears, with total = 0.
+	CompletionCountsInRange(ctx context.Context, arg CompletionCountsInRangeParams) ([]CompletionCountsInRangeRow, error)
+	// Active habits only — archived ones are already hidden from the habits list, so
+	// they should not inflate a category's shown count.
+	CountHabitsByCategory(ctx context.Context, accountID uuid.UUID) ([]CountHabitsByCategoryRow, error)
 	CreateHabit(ctx context.Context, arg CreateHabitParams) (CreateHabitRow, error)
 	HabitBelongsToAccount(ctx context.Context, arg HabitBelongsToAccountParams) (int64, error)
+	// One row per (habit, completion-in-range) pair; a habit with no completions in
+	// range still appears once, with on_date NULL (R2, docs/left.md Phase 6 heatmap).
+	HabitHistory(ctx context.Context, arg HabitHistoryParams) ([]HabitHistoryRow, error)
 	ListActiveHabits(ctx context.Context, accountID uuid.UUID) ([]ListActiveHabitsRow, error)
+	// Every completion of every habit (active and archived), for M8 export
+	// completeness.
+	ListAllCompletions(ctx context.Context, accountID uuid.UUID) ([]ListAllCompletionsRow, error)
+	// Active and archived, raw records, for M8 export completeness.
+	ListAllHabits(ctx context.Context, accountID uuid.UUID) ([]ListAllHabitsRow, error)
 	ListArchivedHabits(ctx context.Context, accountID uuid.UUID) ([]ListArchivedHabitsRow, error)
 	ListCompletionDatesSince(ctx context.Context, arg ListCompletionDatesSinceParams) ([]pgtype.Date, error)
 	MarkCompletion(ctx context.Context, arg MarkCompletionParams) error
 	SetHabitArchived(ctx context.Context, arg SetHabitArchivedParams) (int64, error)
+	SetHabitCategory(ctx context.Context, arg SetHabitCategoryParams) (int64, error)
 	UnmarkCompletion(ctx context.Context, arg UnmarkCompletionParams) error
+	// Full replace of name + target (MX3 Phase 1) — the habit's only other editable
+	// fields; category has its own endpoint (SetHabitCategory, ADR-0009).
+	UpdateHabitFields(ctx context.Context, arg UpdateHabitFieldsParams) (UpdateHabitFieldsRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

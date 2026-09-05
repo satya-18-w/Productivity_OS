@@ -82,6 +82,26 @@
   animation: ui-spin 0.6s linear infinite;
 }
 
+/* ---------------------------------------------------------- SplitButton --- */
+.ui-split {
+  display: inline-flex;
+  align-items: stretch;
+}
+.ui-split__main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ui-split .ui-menu {
+  display: inline-flex;
+}
+.ui-split__caret {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid color-mix(in oklab, currentColor 30%, transparent);
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 /* ------------------------------------------------------------ IconButton --- */
 .ui-icon-btn {
   display: inline-flex;
@@ -102,6 +122,13 @@
 }
 .ui-icon-btn--sm { width: 26px; height: 26px; }
 .ui-icon-btn--lg { width: 40px; height: 40px; }
+
+/* ----------------------------------------------------------- DateStepper --- */
+.date-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
 
 /* ------------------------------------------------------------------ Card --- */
 .ui-card {
@@ -240,6 +267,9 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
 .ui-checkbox__box {
   position: absolute;
   inset: 0;
+  /* Decorative — painted after the input, so without this it silently
+     swallows every mouse/touch click meant for the real control. */
+  pointer-events: none;
   border: 1.5px solid var(--border-strong);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -272,6 +302,9 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
 .ui-toggle-circle__ring {
   position: absolute;
   inset: 0;
+  /* Decorative — painted after the input, so without this it silently
+     swallows every mouse/touch click meant for the real control. */
+  pointer-events: none;
   border: 1.5px solid var(--border-strong);
   border-radius: var(--radius-full);
   background: var(--surface);
@@ -302,6 +335,9 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
 .ui-switch__track {
   position: absolute;
   inset: 0;
+  /* Decorative — painted after the input, so without this it silently
+     swallows every mouse/touch click meant for the real control. */
+  pointer-events: none;
   border-radius: var(--radius-full);
   background: var(--border-strong);
   transition: background var(--dur) var(--ease);
@@ -312,6 +348,7 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
   left: 3px;
   width: 18px;
   height: 18px;
+  pointer-events: none;
   border-radius: var(--radius-full);
   background: #fff;
   box-shadow: var(--shadow-sm);
@@ -472,8 +509,15 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
   background: var(--elevated);
   color: var(--text);
   box-shadow: var(--shadow-lg);
-  max-width: min(440px, calc(100vw - 2 * var(--sp-4)));
-  width: 100%;
+  /* Definite width (not `width: 100%` + `max-width`): with the UA's
+     `left: 0; right: 0`, a 100% width over-constrains the box and LTR
+     drops `right`, docking the dialog left. A single definite width plus
+     `margin: auto` centers it. The reset's `margin: 0` is also overridden
+     here for the same reason. */
+  width: min(440px, calc(100vw - 2 * var(--sp-4)));
+  margin: auto;
+  max-height: calc(100dvh - 2 * var(--sp-4));
+  overflow: auto;
 }
 .ui-dialog::backdrop {
   background: rgba(15, 20, 15, 0.45);
@@ -498,6 +542,44 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
   gap: var(--sp-3);
   flex-wrap: wrap;
 }
+
+/* ------------------------------------------------------------------ Menu --- */
+.ui-menu { position: relative; display: inline-flex; }
+.ui-menu__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ui-menu__list--start { right: auto; left: 0; }
+.ui-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-small);
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+}
+.ui-menu__item:hover:not(:disabled),
+.ui-menu__item:focus-visible {
+  background: var(--surface-hover);
+}
+.ui-menu__item:disabled { opacity: 0.45; cursor: not-allowed; }
+.ui-menu__item--danger { color: var(--danger); }
+.ui-menu__sep { height: 1px; background: var(--border); margin: 4px 0; }
 
 /* --------------------------------------------------------------- Tooltip --- */
 .ui-tooltip-wrap { position: relative; display: inline-flex; }
@@ -541,6 +623,8 @@ button.ui-chip:hover:not(:disabled) { background: var(--surface-hover); }
   flex-shrink: 0;
   background: color-mix(in oklab, var(--cat-other) 16%, var(--surface));
   color: var(--cat-other);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
 }
 .ui-cat-tile--lg { width: 40px; height: 40px; }
 

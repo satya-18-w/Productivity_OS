@@ -7,14 +7,14 @@ import { EmptyState } from "./states";
 import { categoryColor } from "./categoryColor";
 
 describe("StatusBadge", () => {
-  it("uses the four V1 goal labels verbatim", () => {
-    const { rerender } = render(<StatusBadge status="not_started" />);
+  it("uses the four V1 goal labels verbatim (API values)", () => {
+    const { rerender } = render(<StatusBadge status="NOT_STARTED" />);
     expect(screen.getByText("Not started")).toBeDefined();
-    rerender(<StatusBadge status="in_progress" />);
+    rerender(<StatusBadge status="IN_PROGRESS" />);
     expect(screen.getByText("In progress")).toBeDefined();
-    rerender(<StatusBadge status="achieved" />);
+    rerender(<StatusBadge status="ACHIEVED" />);
     expect(screen.getByText("Achieved")).toBeDefined();
-    rerender(<StatusBadge status="abandoned" />);
+    rerender(<StatusBadge status="ABANDONED" />);
     expect(screen.getByText("Abandoned")).toBeDefined();
   });
 });

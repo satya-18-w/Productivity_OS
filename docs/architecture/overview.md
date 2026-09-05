@@ -139,10 +139,22 @@ Implementation idioms for these live in `conventions.md`, not here.
 ## Modules
 
 Concrete modules are introduced by milestone specifications as each milestone is
-planned. This document does not maintain a definitive module list; when modules exist,
-they are catalogued here or in a dedicated `modules.md` if that becomes necessary.
+planned. Each exposes one interface at its package root; they are wired in `cmd/server`.
 
-Currently: none.
+| Module | Owns | Published interface | Depends on (via interface) |
+|--------|------|---------------------|----------------------------|
+| `internal/account` | accounts, sessions, auth + CSRF middleware | `account.Service` | — |
+| `internal/categories` | `categories` table (name, colour, icon, archive) | `categories.Service` | — |
+| `internal/timeline` | `time_blocks` + per-date timeline / comparison views | `timeline.Service` | `account` (zone), `categories` (`CategoryStore`) |
+| `internal/tasks` | `tasks` + state transitions | `tasks.Service` | — *(gains `categories` in MX1 Phase 3)* |
+| `internal/habits` | `habits` + completions, streaks | `habits.Service` | `account` (zone) *(gains `categories` in MX1 Phase 3)* |
+| `internal/goals` | `goals` + progress | `goals.Service` | — *(gains `categories` in MX1 Phase 3)* |
+
+`categories` was extracted from `timeline` in MX1 (ADR-0009): it is a shared,
+cross-cutting concept, so every module that assigns a `category_id` validates it
+through a small `AssignableToAccount` interface wired to `categories.Service`.
+Per-category item counts are composed in `cmd/server` (`categories.Counter` per
+module), never inside `categories` — it stays pure to its own table.
 
 ## Build, test and local development
 

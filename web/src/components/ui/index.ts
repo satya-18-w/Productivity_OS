@@ -15,5 +15,7 @@ export { Tabs, type TabsProps, type TabItem } from "./Tabs";
 export { ProgressBar, type ProgressBarProps } from "./ProgressBar";
 export { Divider, type DividerProps } from "./Divider";
 export { Dialog, type DialogProps } from "./Dialog";
+export { Menu, type MenuProps, type MenuItem } from "./Menu";
+export { SplitButton, type SplitButtonProps } from "./SplitButton";
 export { Tooltip, type TooltipProps } from "./Tooltip";
 export * as icons from "./icons";

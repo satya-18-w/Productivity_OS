@@ -13,11 +13,13 @@ import (
 
 // Handler serves the task and board HTTP endpoints.
 type Handler struct {
-	svc Service
+	svc  Service
+	zone AccountZone
 }
 
-// NewHandler builds the tasks handler.
-func NewHandler(svc Service) *Handler { return &Handler{svc: svc} }
+// NewHandler builds the tasks handler. zone resolves a `from`/`to` date range into
+// instants for the throughput endpoint (ADR-0005).
+func NewHandler(svc Service, zone AccountZone) *Handler { return &Handler{svc: svc, zone: zone} }
 
 // Protector wraps a handler with auth (write also adds CSRF). cmd/server supplies
 // the account module's middleware.
@@ -26,6 +28,7 @@ type Protector func(http.HandlerFunc) http.Handler
 // Mount registers the task routes. write enforces auth + CSRF; read only auth.
 func (h *Handler) Mount(mux *http.ServeMux, write, read Protector) {
 	mux.Handle("GET /api/board", read(h.getBoard))
+	mux.Handle("GET /api/tasks/throughput", read(h.throughput))
 	mux.Handle("POST /api/tasks", write(h.createTask))
 	mux.Handle("PATCH /api/tasks/{id}", write(h.updateTask))
 	mux.Handle("PUT /api/tasks/{id}/state", write(h.moveTask))
@@ -52,6 +55,9 @@ type taskBody struct {
 	Description string  `json:"description"`
 	DueDate     *string `json:"due_date"`
 	State       string  `json:"state"`
+	CategoryID  *string `json:"category_id"`
+	GoalID      *string `json:"goal_id"`
+	Priority    *string `json:"priority"`
 	CreatedAt   string  `json:"created_at"`
 	UpdatedAt   string  `json:"updated_at"`
 }
@@ -68,6 +74,18 @@ func toTaskBody(t Task) taskBody {
 	if t.DueDate != nil {
 		s := t.DueDate.String()
 		b.DueDate = &s
+	}
+	if t.CategoryID != nil {
+		s := t.CategoryID.String()
+		b.CategoryID = &s
+	}
+	if t.GoalID != nil {
+		s := t.GoalID.String()
+		b.GoalID = &s
+	}
+	if t.Priority != nil {
+		s := string(*t.Priority)
+		b.Priority = &s
 	}
 	return b
 }
@@ -98,20 +116,92 @@ func (h *Handler) getBoard(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
+// throughput serves GET /api/tasks/throughput?from=&to= — the count of distinct
+// tasks that entered DONE inside the inclusive date range, in the account's
+// timezone (M6/M7 foundation).
+func (h *Handler) throughput(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	fields := map[string]string{}
+
+	from, fromErr := timezone.ParseDate(q.Get("from"))
+	if fromErr != nil {
+		fields["from"] = "must be YYYY-MM-DD"
+	}
+	to, toErr := timezone.ParseDate(q.Get("to"))
+	if toErr != nil {
+		fields["to"] = "must be YYYY-MM-DD"
+	}
+	if len(fields) > 0 {
+		httpx.WriteError(w, r, httpx.ValidationError(fields))
+		return
+	}
+	if to.Before(from) {
+		httpx.WriteError(w, r, httpx.ValidationError(map[string]string{"to": "must not be before from"}))
+		return
+	}
+
+	loc, err := h.zone.Zone(r.Context(), accountID(r))
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	start, _ := timezone.DayWindow(from, loc)
+	_, end := timezone.DayWindow(to, loc)
+
+	n, err := h.svc.DoneCountInRange(r.Context(), accountID(r), start, end)
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"from": from.String(), "to": to.String(), "done_count": n,
+	})
+}
+
 type taskRequest struct {
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
 	DueDate     *string `json:"due_date"`
+	CategoryID  *string `json:"category_id"`
+	GoalID      *string `json:"goal_id"`
+	Priority    *string `json:"priority"`
 }
 
 func parseTaskInput(req taskRequest) (TaskInput, *ValidationError) {
 	in := TaskInput{Title: req.Title, Description: req.Description}
+	fields := map[string]string{}
+
 	if req.DueDate != nil && *req.DueDate != "" {
 		d, err := timezone.ParseDate(*req.DueDate)
 		if err != nil {
-			return TaskInput{}, &ValidationError{Fields: map[string]string{"due_date": "must be YYYY-MM-DD"}}
+			fields["due_date"] = "must be YYYY-MM-DD"
+		} else {
+			in.DueDate = &d
 		}
-		in.DueDate = &d
+	}
+	if req.CategoryID != nil && *req.CategoryID != "" {
+		id, err := uuid.Parse(*req.CategoryID)
+		if err != nil {
+			fields["category_id"] = "must be a UUID"
+		} else {
+			in.CategoryID = &id
+		}
+	}
+	if req.GoalID != nil && *req.GoalID != "" {
+		id, err := uuid.Parse(*req.GoalID)
+		if err != nil {
+			fields["goal_id"] = "must be a UUID"
+		} else {
+			in.GoalID = &id
+		}
+	}
+	if req.Priority != nil && *req.Priority != "" {
+		p := Priority(*req.Priority)
+		in.Priority = &p
+	}
+
+	if len(fields) > 0 {
+		return TaskInput{}, &ValidationError{Fields: fields}
 	}
 	return in, nil
 }

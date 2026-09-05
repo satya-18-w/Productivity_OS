@@ -1,0 +1,117 @@
+- generic [ref=f30e3]:
+  - link "Skip to content" [ref=f30e4] [cursor=pointer]:
+    - /url: "#main"
+  - complementary [ref=f30e5]:
+    - link "Productivity OS — home" [ref=f30e6] [cursor=pointer]:
+      - /url: /
+      - generic [ref=f30e10]: Productivity OS
+    - navigation "Primary" [ref=f30e11]:
+      - link "Timeline" [ref=f30e12] [cursor=pointer]:
+        - /url: /timeline
+      - link "Tasks" [ref=f30e19] [cursor=pointer]:
+        - /url: /tasks
+      - link "Board" [ref=f30e24] [cursor=pointer]:
+        - /url: /board
+      - link "Habits" [ref=f30e29] [cursor=pointer]:
+        - /url: /habits
+      - link "Goals" [ref=f30e36] [cursor=pointer]:
+        - /url: /goals
+      - link "Categories" [ref=f30e42] [cursor=pointer]:
+        - /url: /categories
+      - link "Reports" [ref=f30e47] [cursor=pointer]:
+        - /url: /reports
+      - link "Reviews" [ref=f30e52] [cursor=pointer]:
+        - /url: /reviews/daily
+    - generic [ref=f30e58]:
+      - generic [ref=f30e59]:
+        - generic [ref=f30e60]: Theme
+        - radiogroup "Theme" [ref=f30e61]:
+          - radio "Light" [checked] [ref=f30e62] [cursor=pointer]
+          - radio "Dark" [ref=f30e66] [cursor=pointer]
+          - radio "System" [ref=f30e69] [cursor=pointer]
+      - button "qa-tasktimeblock@example.com" [ref=f30e74] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f30e75]: qa
+  - main [ref=f30e77]:
+    - generic [ref=f30e78]:
+      - generic [ref=f30e79]:
+        - generic [ref=f30e80]:
+          - generic [ref=f30e81]:
+            - generic [ref=f30e82]:
+              - generic [ref=f30e83]: Tasks
+              - heading "Tasks" [level=1] [ref=f30e84]
+            - button "Add task" [ref=f30e86] [cursor=pointer]
+          - paragraph [ref=f30e87]: Everything on your plate, grouped by when it's due.
+        - generic [ref=f30e95]:
+          - generic [ref=f30e96]:
+            - generic [ref=f30e97]: "4"
+            - generic [ref=f30e99]:
+              - generic [ref=f30e100]: Total
+              - generic [ref=f30e101]: 0 completed
+          - generic [ref=f30e102]:
+            - generic [ref=f30e103]: "0"
+            - generic [ref=f30e105]: In progress
+          - generic [ref=f30e107]:
+            - generic [ref=f30e108]: "0"
+            - generic [ref=f30e110]: Overdue
+          - generic [ref=f30e112]:
+            - generic [ref=f30e113]: "0"
+            - generic [ref=f30e115]: Due this week
+        - radiogroup "Filter tasks" [ref=f30e88]:
+          - radio "All" [checked] [ref=f30e89] [cursor=pointer]
+          - radio "Today" [ref=f30e90] [cursor=pointer]
+          - radio "Upcoming" [ref=f30e91] [cursor=pointer]
+          - radio "Overdue" [ref=f30e92] [cursor=pointer]
+          - radio "Completed" [ref=f30e93] [cursor=pointer]
+        - generic [ref=f30e169]:
+          - generic [ref=f30e170]:
+            - generic [ref=f30e171]: No due date
+            - generic [ref=f30e172]: (4)
+          - list [ref=f30e173]:
+            - listitem [ref=f30e312]:
+              - checkbox "Mark \"Build Timeline UI\" done" [ref=f30e316] [cursor=pointer]
+              - generic [ref=f30e317]:
+                - button "Build Timeline UI" [ref=f30e319] [cursor=pointer]
+                - generic [ref=f30e321]:
+                  - generic [ref=f30e322]: Backlog
+                  - generic [ref=f30e323]: Projects
+              - button "Actions for Build Timeline UI" [ref=f30e328] [cursor=pointer]
+            - listitem [ref=f30e266]:
+              - checkbox "Mark \"Read Research Papers\" done" [ref=f30e270] [cursor=pointer]
+              - generic [ref=f30e271]:
+                - button "Read Research Papers" [ref=f30e273] [cursor=pointer]
+                - generic [ref=f30e275]:
+                  - generic [ref=f30e276]: Backlog
+                  - generic [ref=f30e277]: Study
+              - button "Actions for Read Research Papers" [ref=f30e282] [cursor=pointer]
+            - listitem [ref=f30e220]:
+              - checkbox "Mark \"Work on Productivity OS\" done" [ref=f30e224] [cursor=pointer]
+              - generic [ref=f30e225]:
+                - button "Work on Productivity OS" [ref=f30e227] [cursor=pointer]
+                - generic [ref=f30e229]:
+                  - generic [ref=f30e230]: Backlog
+                  - generic [ref=f30e231]: Projects
+              - button "Actions for Work on Productivity OS" [ref=f30e236] [cursor=pointer]
+            - listitem [ref=f30e174]:
+              - checkbox "Mark \"DSA Practice\" done" [ref=f30e178] [cursor=pointer]
+              - generic [ref=f30e179]:
+                - button "DSA Practice" [ref=f30e181] [cursor=pointer]
+                - generic [ref=f30e183]:
+                  - generic [ref=f30e184]: Backlog
+                  - generic [ref=f30e185]: Study
+              - button "Actions for DSA Practice" [ref=f30e190] [cursor=pointer]
+      - complementary "Task summary" [ref=f30e125]:
+        - generic [ref=f30e126]:
+          - heading "By status" [level=2] [ref=f30e128]
+          - list [ref=f30e129]:
+            - listitem [ref=f30e130]:
+              - generic [ref=f30e131]: Backlog
+              - generic [ref=f30e132]: "4"
+            - listitem [ref=f30e133]:
+              - generic [ref=f30e134]: To do
+              - generic [ref=f30e135]: "0"
+            - listitem [ref=f30e136]:
+              - generic [ref=f30e137]: In progress
+              - generic [ref=f30e138]: "0"
+            - listitem [ref=f30e139]:
+              - generic [ref=f30e140]: Done
+              - generic [ref=f30e141]: "0"

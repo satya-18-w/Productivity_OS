@@ -22,11 +22,14 @@
 
 - **0.1 V1 scope is authoritative.** Build only what `docs/requirements/v1.md` grants.
   The reference-only exclusion list in `design-system.md §6.4` is a hard "do not build":
-  Dashboard, Notes, Calendar/events, Timeline Week/Month, analytics beyond the five §13
-  reports, Focus/Pomodoro, recurring tasks, task priorities/tags/assignees, categories
+  Dashboard, Notes, Calendar/events, analytics beyond the five §13
+  reports, recurring tasks, task priorities/tags/assignees, categories
   on tasks/habits/goals, "Spaces", goal milestones/linked-tasks/%-progress, habit
   longest-streak/consistency%, social/collab, AI, calendar sync, notifications, global
-  search, gamification/scoring.
+  search, gamification/scoring. **Timeline Week/Month and a focus timer were removed
+  from this list 2026-09-05 (product owner) — see `v1.md §4`/`§5` amendments and
+  `design-system.md` G2; both are now built (`screens/timeline-week.md`,
+  `screens/timeline-month.md`, `screens/timeline.md`'s "Focus timer" follow-up).**
 - **0.2 Reference images = visual language only.** Never lift a feature from a PNG that
   `v1.md` does not grant. For an excluded feature shown in a mock, take spacing / colour /
   type only.
@@ -117,7 +120,7 @@ genuinely needs it, and add to `design-system.md §4` + `primitives.css` first.
       ListRow + ListGroupHeader
 - [ ] **SplitButton** (primary + menu caret) — needed by Timeline "Add ▾" (§4.5)
 - [ ] **Menu / Dropdown** (kebab actions, "Add" menu) — accessible menu pattern
-- [ ] **DatePicker / DateStepper** — `‹ date ›` + "Today" + native date input (Timeline, Reports range)
+- [x] **DateStepper** — `‹ date ›` + "Today" + native date input (`components/date/DateStepper.tsx`, extracted Phase 10; used by Timeline + Daily Review). Reports' range needed two dates + presets instead — `features/reports/DateRangePicker.tsx`, a separate component.
 - [ ] **DateRangePicker** — Reports (the one required control, §13)
 - [ ] **Mini month calendar** (right-rail, Monday-first D8) — Timeline rail
 - [ ] **Donut / RingChart**, **BarChart**, **BarList** — Reports only (choice pending **R1**)
@@ -288,7 +291,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** fixture tasks across states; screenshot desktop/mobile/dark; compare to `tasks.png` **minus** priority/star/assignee/category columns and the "Categories"/"Priority Breakdown" rail widgets
 - **Visual acceptance:** shared template + grouped sections with coloured accent bars + donut by state
 - **Acceptance criteria:** create (title + optional description + due date); edit those; change state any→any; delete; see all tasks (§7)
-- **Status:** ☐ NOT STARTED
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/tasks/`. Grouped list (Overdue/Today/Upcoming/No-date/Completed), KPI row, filter tabs (`?filter=`), `TaskRow` with `Checkbox` + kebab `Menu`, `TaskDialog` (title/description/due only). New shared **`Menu`** primitive. Donut deferred (plain "By status" rail list). Full suite green. Details: `screens/tasks.md` → "Phase 4".
 
 ### Stage 6 — Board / Kanban
 
@@ -305,7 +308,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** fixture tasks; screenshot desktop/mobile/dark; verify column order + counts; drag one card; keyboard-move one card
 - **Visual acceptance:** shared template + columns match `tasks.png` card styling; counts; drag affordance
 - **Acceptance criteria:** view all tasks in four fixed columns; move any→any sets state; board reflects §7 changes (§8)
-- **Status:** ☐ NOT STARTED
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/board/`. Four fixed columns, native drag-and-drop **+** the card kebab "Move to …" menu (the keyboard/touch path). Reuses `TaskDialog` / `Menu`. Old `pages/Board.tsx` deleted. Full suite green. Details: `screens/board.md`.
 
 ### Stage 7 — Habits
 
@@ -322,7 +325,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** fixture habits + completions; screenshot desktop/mobile/dark; compare to `habits.png` **minus** longest-streak/consistency/"Habit Categories"/motivational banner
 - **Visual acceptance:** shared template + grid alignment + filled-green vs hollow circles + today emphasis + plain streak number (no flame animation, VP3)
 - **Acceptance criteria:** create habit (name); mark/unmark a date; archive/unarchive; see current streak per active habit; see a chosen date's completions (§9)
-- **Status:** ☐ NOT STARTED
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/habits/`. Views: Today checklist / This-week grid (7 `api.habits` calls) / This-month heatmap (**mock data**, `docs/left.md`) / All habits (archive/unarchive). KPIs are V1-safe. Kebab = Archive only. `--streak` token added. 18 tests. Backend gaps in `docs/left.md`. Details: `screens/habits.md` → "Phase 6".
 
 ### Stage 8 — Goals
 
@@ -339,7 +342,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** fixture goals in all four states; screenshot desktop/mobile/dark; compare to `goals.png` **minus** progress bars / % / task counts / category chips / milestones rail
 - **Visual acceptance:** shared template + state chip colours + target-date chip; list rhythm
 - **Acceptance criteria:** create (title + optional description + target date); edit those; set one of four states manually; list with state; delete (§10)
-- **Status:** ☐ NOT STARTED
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/goals/`. Flat newest-first list, state filter, KPI row, kebab (Edit/Set-state/Delete), `StatusBadge` migrated to uppercase API values. No %, progress bar, category, or milestones. Donut deferred (plain "By status" list). Backend fully built — no `docs/left.md` entries. 162 tests. Details: `screens/goals.md` → "Phase 7".
 
 ### Stage 9 — Categories
 
@@ -357,7 +360,7 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** fixture categories; screenshot desktop/mobile/dark; take visual language (card/tile styling) from `categories.png` but **not** the counts/breakdown/donut
 - **Visual acceptance:** shared template; restrained — closer to `v1.md`'s "flat list" than the mock's rich cards
 - **Acceptance criteria:** create (name); rename; archive; see active list (§2)
-- **Status:** ☐ NOT STARTED · scope bounded by C1
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/categories/`. Active-only flat list, colour tile (decorative, D2), kebab = Rename/Archive. No Archived tab — the API has no way to list/unarchive archived categories (tracked in `docs/left.md`, register C1). 12 tests. Details: `screens/categories.md` → "Phase 8".
 
 ### Stage 10 — Reports
 
@@ -375,8 +378,8 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** fixture range data; screenshot desktop/mobile/dark; compare **only** visual language to `analytics.png` (KPI/card styling) — not its trend/delta/insight/heatmap widgets
 - **Visual acceptance:** shared template + one card per report + honest figure captions + no motivational/insight copy
 - **Acceptance criteria:** user views each of the five §13 reports over a chosen range, deterministic, DST-correct (§13, N4)
-- **Blockers:** **R1** (viz choice) in the SPEC; **reports backend API** must exist
-- **Status:** ☐ NOT STARTED · blocked on R1 + reports API
+- **Blockers:** ~~**R1** (viz choice) in the SPEC~~ resolved 2026-09-04; ~~**reports backend API**~~ — none exists, built against mock data per standing instruction (`docs/left.md`, "Phase 9 — Reports")
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/reports/`. All five §13 reports render against deterministic mock data (`mockReportData`) with a persistent "sample data" notice; `?from=&to=` URL-synced date range + presets. R1 resolved: hbars / totals table / table+ProgressBar / StatCard / vbar chart, no charting library. 25 tests. Details: `screens/analytics.md` → "Phase 9". Full reports API spec for the backend in `docs/left.md`.
 
 ### Stage 11 — Daily Review
 
@@ -392,8 +395,8 @@ checklist** (§11). All routes are **PENDING D10**. Detail lives in the linked
 - **Playwright:** screenshot desktop/mobile/dark; verify four prompts + reference panel
 - **Visual acceptance:** shared template; calm form; reference data visually secondary
 - **Acceptance criteria:** complete a daily review (four free-text answers) for a date; edit it; view a past one; see that date's actual-per-category + habit completions while doing it (§11)
-- **Blockers:** reviews backend API; the §6 per-date totals + habit-completion reads
-- **Status:** ☐ NOT STARTED
+- **Blockers:** ~~reviews backend API~~ — none exists, review record built against an in-memory mock per standing instruction (`docs/left.md`, "Phase 10 — Daily Review"); ~~the §6 per-date totals + habit-completion reads~~ — these already exist (`api.comparison`, `api.habits`), used live, not mocked
+- **Status:** ✅ **COMPLETE (2026-09-04)** — `web/src/features/reviews/`. Reference panel is live data; the review itself (4 fixed prompts, free text) runs on a mocked in-memory store. Extracted shared `DateStepper` (also refactored into Timeline). 12 tests. Details: `screens/reviews.md` → "Phase 10". Full reviews API spec for the backend in `docs/left.md`.
 
 ### Stage 12 — Weekly Review
 

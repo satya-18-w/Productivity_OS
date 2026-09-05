@@ -20,6 +20,22 @@ if (!window.matchMedia) {
     }) as unknown as MediaQueryList;
 }
 
+// jsdom doesn't implement Element.scrollIntoView at all (unlike window.scrollTo,
+// which it stubs as a harmless no-op) — components that call it on a ref (Timeline
+// Week/Month's auto-scroll-to-today) throw without this.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function scrollIntoView() {};
+}
+
+// jsdom doesn't implement URL.createObjectURL/revokeObjectURL at all — Export's
+// download-link flow (Blob -> object URL) throws without this.
+if (!URL.createObjectURL) {
+  URL.createObjectURL = () => "blob:mock-url";
+}
+if (!URL.revokeObjectURL) {
+  URL.revokeObjectURL = () => {};
+}
+
 // jsdom's <dialog> lacks showModal/close — stub them for Dialog tests.
 if (typeof HTMLDialogElement !== "undefined") {
   if (!HTMLDialogElement.prototype.showModal) {

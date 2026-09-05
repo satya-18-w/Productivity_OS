@@ -1,0 +1,63 @@
+- generic [ref=f26e3]:
+  - link "Skip to content" [ref=f26e4] [cursor=pointer]:
+    - /url: "#main"
+  - complementary [ref=f26e5]:
+    - link "Productivity OS — home" [ref=f26e6] [cursor=pointer]:
+      - /url: /
+      - generic [ref=f26e10]: Productivity OS
+    - navigation "Primary" [ref=f26e11]:
+      - link "Timeline" [ref=f26e12] [cursor=pointer]:
+        - /url: /timeline
+      - link "Tasks" [ref=f26e19] [cursor=pointer]:
+        - /url: /tasks
+      - link "Board" [ref=f26e24] [cursor=pointer]:
+        - /url: /board
+      - link "Habits" [ref=f26e29] [cursor=pointer]:
+        - /url: /habits
+      - link "Goals" [ref=f26e36] [cursor=pointer]:
+        - /url: /goals
+      - link "Categories" [ref=f26e42] [cursor=pointer]:
+        - /url: /categories
+      - link "Reports" [ref=f26e47] [cursor=pointer]:
+        - /url: /reports
+      - link "Reviews" [ref=f26e52] [cursor=pointer]:
+        - /url: /reviews/daily
+    - generic [ref=f26e58]:
+      - generic [ref=f26e59]:
+        - generic [ref=f26e60]: Theme
+        - radiogroup "Theme" [ref=f26e61]:
+          - radio "Light" [checked] [ref=f26e62] [cursor=pointer]
+          - radio "Dark" [ref=f26e66] [cursor=pointer]
+          - radio "System" [ref=f26e69] [cursor=pointer]
+      - button "qa-tasktimeblock@example.com" [ref=f26e74] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f26e75]: qa
+  - main [ref=f26e77]:
+    - generic [ref=f26e79]:
+      - generic [ref=f26e80]:
+        - generic [ref=f26e81]:
+          - generic [ref=f26e82]:
+            - generic [ref=f26e83]: Categories
+            - heading "Categories" [level=1] [ref=f26e84]
+          - button "New category" [ref=f26e86] [cursor=pointer]
+        - paragraph [ref=f26e87]: Flat labels for your time blocks.
+      - list [ref=f26e112]:
+        - listitem [ref=f26e205]:
+          - img "Health" [ref=f26e206]: H
+          - generic [ref=f26e207]: Health
+          - button "Actions for Health" [ref=f26e209] [cursor=pointer]
+        - listitem [ref=f26e113]:
+          - img "Personal" [ref=f26e114]: P
+          - generic [ref=f26e115]: Personal
+          - button "Actions for Personal" [ref=f26e117] [cursor=pointer]
+        - listitem [ref=f26e159]:
+          - img "Projects" [ref=f26e160]: P
+          - generic [ref=f26e161]: Projects
+          - button "Actions for Projects" [ref=f26e163] [cursor=pointer]
+        - listitem [ref=f26e136]:
+          - img "Study" [ref=f26e137]: S
+          - generic [ref=f26e138]: Study
+          - button "Actions for Study" [ref=f26e140] [cursor=pointer]
+        - listitem [ref=f26e182]:
+          - img "Work" [ref=f26e183]: W
+          - generic [ref=f26e184]: Work
+          - button "Actions for Work" [ref=f26e186] [cursor=pointer]

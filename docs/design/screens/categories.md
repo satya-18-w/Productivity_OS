@@ -75,3 +75,37 @@ item counts, cross-entity breakdowns, icons, donut, import/export, recently-used
 
 §4.1 shell · §4.2 header · §4.3 view switcher (Active/Archived) · §4.5 buttons · §4.7 card
 · §4.9 chips · §4.16 create/edit form · `requirements` §2 · `visual-principles.md` VP10.
+
+---
+
+## Phase 8 — Categories — Status: ✅ COMPLETE (2026-09-04)
+
+Route `/categories` → `CategoriesScreen` (`web/src/features/categories/`). Backend:
+`api.listCategories`, `createCategory`, `renameCategory`, `archiveCategory`.
+
+- [x] `PageHeader` + **New category** primary. `CategoryDialog` = **name only** (§2), used
+      for both create and rename.
+- [x] **Active-only flat list** (no Active/Archived tabs — see below): `CategoryRow` =
+      decorative colour tile (`categoryColor(id)` + first-letter glyph, presentation only,
+      D2) + name + kebab `Menu` (Rename · Archive, with a confirm on archive).
+- [x] **Dropped per spec:** item counts, cross-entity breakdowns, category icons, the
+      "Category Overview" donut, Quick Actions, Recently Used — none are V1.
+- [x] No rail (spec: "minimal — a quote card, or nothing"; omitted the quote per D6/VP3).
+- [x] Responsive — single-column list; no page h-scroll. Light + dark verified.
+- [x] Tests — `CategoryRow` (3), `CategoryDialog` (3, incl. 409 duplicate-name), 
+      `CategoriesScreen` (6, incl. "no item-count text" assertion). Full suite green.
+- [x] Browser-verified — 5 fixture categories, colour tiles, kebab (Rename/Archive only),
+      duplicate-name handling wired, dark, mobile; no console errors.
+- [ ] Committed — pending product owner.
+
+Old `web/src/pages/Categories.tsx` deleted.
+
+### Why there's no "Archived" tab (tracked in `docs/left.md`)
+
+Unlike Habits (`GET /api/habits` returns `archived: ArchivedHabit[]` + an `unarchive`
+endpoint exists), the Categories API has **no way to list archived categories or bring
+one back**. `v1.md §2` only requires *archive*, not an archived view or unarchive — so
+this isn't a gap against V1, but it does leave design-system register item **C1**
+unresolved. Building an "Archived" tab now would mean it against nothing. If product
+confirms archived-categories visibility/unarchive is wanted, the endpoints + swap point
+are specified in `docs/left.md`.

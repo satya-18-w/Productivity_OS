@@ -13,11 +13,16 @@ import (
 
 // Handler serves the goal HTTP endpoints.
 type Handler struct {
-	svc Service
+	svc      Service
+	progress ProgressReader
 }
 
-// NewHandler builds the goals handler.
-func NewHandler(svc Service) *Handler { return &Handler{svc: svc} }
+// NewHandler builds the goals handler. progress supplies each goal's derived
+// task-completion counts for the list endpoint (MX3; wired to tasks.Service by
+// cmd/server).
+func NewHandler(svc Service, progress ProgressReader) *Handler {
+	return &Handler{svc: svc, progress: progress}
+}
 
 // Protector wraps a handler with auth (write also adds CSRF).
 type Protector func(http.HandlerFunc) http.Handler
@@ -51,8 +56,11 @@ type goalBody struct {
 	Description string  `json:"description"`
 	TargetDate  *string `json:"target_date"`
 	Progress    string  `json:"progress"`
+	CategoryID  *string `json:"category_id"`
 	CreatedAt   string  `json:"created_at"`
 	UpdatedAt   string  `json:"updated_at"`
+	DoneTasks   int     `json:"done_tasks"`
+	TotalTasks  int     `json:"total_tasks"`
 }
 
 func toBody(g Goal) goalBody {
@@ -68,6 +76,10 @@ func toBody(g Goal) goalBody {
 		s := g.TargetDate.String()
 		b.TargetDate = &s
 	}
+	if g.CategoryID != nil {
+		s := g.CategoryID.String()
+		b.CategoryID = &s
+	}
 	return b
 }
 
@@ -75,29 +87,54 @@ type goalRequest struct {
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
 	TargetDate  *string `json:"target_date"`
+	CategoryID  *string `json:"category_id"`
 }
 
 func parseInput(req goalRequest) (GoalInput, *ValidationError) {
 	in := GoalInput{Title: req.Title, Description: req.Description}
+	fields := map[string]string{}
+
 	if req.TargetDate != nil && *req.TargetDate != "" {
 		d, err := timezone.ParseDate(*req.TargetDate)
 		if err != nil {
-			return GoalInput{}, &ValidationError{Fields: map[string]string{"target_date": "must be YYYY-MM-DD"}}
+			fields["target_date"] = "must be YYYY-MM-DD"
+		} else {
+			in.TargetDate = &d
 		}
-		in.TargetDate = &d
+	}
+	if req.CategoryID != nil && *req.CategoryID != "" {
+		id, err := uuid.Parse(*req.CategoryID)
+		if err != nil {
+			fields["category_id"] = "must be a UUID"
+		} else {
+			in.CategoryID = &id
+		}
+	}
+
+	if len(fields) > 0 {
+		return GoalInput{}, &ValidationError{Fields: fields}
 	}
 	return in, nil
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	list, err := h.svc.ListGoals(r.Context(), accountID(r))
+	acc := accountID(r)
+	list, err := h.svc.ListGoals(r.Context(), acc)
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	done, total, err := h.progress.ProgressByGoal(r.Context(), acc)
 	if err != nil {
 		httpx.WriteError(w, r, err)
 		return
 	}
 	out := make([]goalBody, len(list))
 	for i, g := range list {
-		out[i] = toBody(g)
+		b := toBody(g)
+		b.DoneTasks = done[g.ID]
+		b.TotalTasks = total[g.ID]
+		out[i] = b
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"goals": out})
 }

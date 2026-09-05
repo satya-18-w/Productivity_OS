@@ -30,17 +30,14 @@ type Protector func(http.HandlerFunc) http.Handler
 // Mount registers the timeline routes. write must enforce auth + CSRF; read only
 // auth.
 func (h *Handler) Mount(mux *http.ServeMux, write, read Protector) {
-	mux.Handle("GET /api/categories", read(h.listCategories))
-	mux.Handle("POST /api/categories", write(h.createCategory))
-	mux.Handle("PATCH /api/categories/{id}", write(h.renameCategory))
-	mux.Handle("POST /api/categories/{id}/archive", write(h.archiveCategory))
-
 	mux.Handle("POST /api/blocks", write(h.createBlock))
 	mux.Handle("PUT /api/blocks/{id}", write(h.updateBlock))
 	mux.Handle("DELETE /api/blocks/{id}", write(h.deleteBlock))
 
 	mux.Handle("GET /api/timeline", read(h.getTimeline))
+	mux.Handle("GET /api/timeline/range", read(h.getTimelineRange))
 	mux.Handle("GET /api/comparison", read(h.getComparison))
+	mux.Handle("GET /api/tasks/{id}/blocks", read(h.getBlocksForTask))
 }
 
 func queryDate(w http.ResponseWriter, r *http.Request) (timezone.Date, bool) {
@@ -115,6 +112,58 @@ func (h *Handler) getTimeline(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }
 
+// rangeTimelineResponse is the batched shape the frontend's Week/Month views
+// expect (docs/left.md) — one entry per day, each shaped exactly like
+// timelineResponse's planned/actual arrays.
+type rangeTimelineResponse struct {
+	From string           `json:"from"`
+	To   string           `json:"to"`
+	Days []dayTimelineDay `json:"days"`
+}
+
+type dayTimelineDay struct {
+	Date    string                `json:"date"`
+	Planned []positionedBlockBody `json:"planned"`
+	Actual  []positionedBlockBody `json:"actual"`
+}
+
+func (h *Handler) getTimelineRange(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	fields := map[string]string{}
+
+	from, err := timezone.ParseDate(q.Get("from"))
+	if err != nil {
+		fields["from"] = "must be YYYY-MM-DD"
+	}
+	to, err := timezone.ParseDate(q.Get("to"))
+	if err != nil {
+		fields["to"] = "must be YYYY-MM-DD"
+	}
+	if len(fields) > 0 {
+		httpx.WriteError(w, r, httpx.ValidationError(fields))
+		return
+	}
+
+	rt, err := h.svc.TimelineRange(r.Context(), accountID(r), from, to)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+
+	resp := rangeTimelineResponse{From: rt.From.String(), To: rt.To.String(), Days: make([]dayTimelineDay, len(rt.Days))}
+	for i, d := range rt.Days {
+		day := dayTimelineDay{Date: d.Date.String(), Planned: []positionedBlockBody{}, Actual: []positionedBlockBody{}}
+		for _, b := range d.Planned {
+			day.Planned = append(day.Planned, toPositionedBody(b))
+		}
+		for _, b := range d.Actual {
+			day.Actual = append(day.Actual, toPositionedBody(b))
+		}
+		resp.Days[i] = day
+	}
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
 type comparisonRow struct {
 	CategoryID        *string `json:"category_id"`
 	CategoryName      string  `json:"category_name"`
@@ -123,12 +172,42 @@ type comparisonRow struct {
 	DifferenceSeconds int64   `json:"difference_seconds"`
 }
 
+func toComparisonRows(totals []CategoryTotals) []comparisonRow {
+	rows := make([]comparisonRow, len(totals))
+	for i, c := range totals {
+		rows[i] = comparisonRow{
+			CategoryName:      c.CategoryName,
+			PlannedSeconds:    c.PlannedSeconds,
+			ActualSeconds:     c.ActualSeconds,
+			DifferenceSeconds: c.DifferenceSeconds,
+		}
+		if c.CategoryID != nil {
+			s := c.CategoryID.String()
+			rows[i].CategoryID = &s
+		}
+	}
+	return rows
+}
+
+// comparisonResponse serves both the single-date and the range shape: Date is set
+// for `?date=`, From/To for `?from=&to=` (M6/M7 foundation).
 type comparisonResponse struct {
-	Date       string          `json:"date"`
+	Date       string          `json:"date,omitempty"`
+	From       string          `json:"from,omitempty"`
+	To         string          `json:"to,omitempty"`
 	Categories []comparisonRow `json:"categories"`
 }
 
+// getComparison serves GET /api/comparison. `?date=` returns one day; `?from=&to=`
+// (an alternative to `?date=`) returns the same per-category shape summed over the
+// inclusive range — the M6/M7 foundation.
 func (h *Handler) getComparison(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if q.Get("from") != "" || q.Get("to") != "" {
+		h.getComparisonRange(w, r)
+		return
+	}
+
 	date, ok := queryDate(w, r)
 	if !ok {
 		return
@@ -138,95 +217,41 @@ func (h *Handler) getComparison(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, r, err)
 		return
 	}
-	resp := comparisonResponse{Date: date.String(), Categories: []comparisonRow{}}
-	for _, c := range cmp.Categories {
-		row := comparisonRow{
-			CategoryName:      c.CategoryName,
-			PlannedSeconds:    c.PlannedSeconds,
-			ActualSeconds:     c.ActualSeconds,
-			DifferenceSeconds: c.DifferenceSeconds,
-		}
-		if c.CategoryID != nil {
-			s := c.CategoryID.String()
-			row.CategoryID = &s
-		}
-		resp.Categories = append(resp.Categories, row)
+	httpx.WriteJSON(w, http.StatusOK, comparisonResponse{
+		Date: date.String(), Categories: toComparisonRows(cmp.Categories),
+	})
+}
+
+func (h *Handler) getComparisonRange(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	fields := map[string]string{}
+
+	from, err := timezone.ParseDate(q.Get("from"))
+	if err != nil {
+		fields["from"] = "must be YYYY-MM-DD (required together with to)"
 	}
-	httpx.WriteJSON(w, http.StatusOK, resp)
+	to, err := timezone.ParseDate(q.Get("to"))
+	if err != nil {
+		fields["to"] = "must be YYYY-MM-DD (required together with from)"
+	}
+	if len(fields) > 0 {
+		httpx.WriteError(w, r, httpx.ValidationError(fields))
+		return
+	}
+
+	cmp, err := h.svc.ComparisonRange(r.Context(), accountID(r), from, to)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, comparisonResponse{
+		From: from.String(), To: to.String(), Categories: toComparisonRows(cmp.Categories),
+	})
 }
 
 func accountID(r *http.Request) uuid.UUID {
 	id, _ := reqctx.IdentityFrom(r.Context())
 	return id.AccountID
-}
-
-type categoryBody struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-func toCategoryBody(c Category) categoryBody {
-	return categoryBody{ID: c.ID.String(), Name: c.Name}
-}
-
-func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
-	cats, err := h.svc.ListActiveCategories(r.Context(), accountID(r))
-	if err != nil {
-		httpx.WriteError(w, r, err)
-		return
-	}
-	out := make([]categoryBody, len(cats))
-	for i, c := range cats {
-		out[i] = toCategoryBody(c)
-	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"categories": out})
-}
-
-type nameRequest struct {
-	Name string `json:"name"`
-}
-
-func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
-	var req nameRequest
-	if err := httpx.DecodeJSON(w, r, &req); err != nil {
-		httpx.WriteError(w, r, err)
-		return
-	}
-	cat, err := h.svc.CreateCategory(r.Context(), accountID(r), req.Name)
-	if err != nil {
-		writeServiceError(w, r, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusCreated, toCategoryBody(cat))
-}
-
-func (h *Handler) renameCategory(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
-	if !ok {
-		return
-	}
-	var req nameRequest
-	if err := httpx.DecodeJSON(w, r, &req); err != nil {
-		httpx.WriteError(w, r, err)
-		return
-	}
-	if err := h.svc.RenameCategory(r.Context(), accountID(r), id, req.Name); err != nil {
-		writeServiceError(w, r, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *Handler) archiveCategory(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
-	if !ok {
-		return
-	}
-	if err := h.svc.ArchiveCategory(r.Context(), accountID(r), id); err != nil {
-		writeServiceError(w, r, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // blockRequest is wall-clock: a date, HH:MM start/end, and whether the end falls
@@ -239,6 +264,7 @@ type blockRequest struct {
 	End         string  `json:"end"`
 	EndsNextDay bool    `json:"ends_next_day"`
 	CategoryID  *string `json:"category_id"`
+	TaskID      *string `json:"task_id"`
 }
 
 type blockBody struct {
@@ -248,9 +274,10 @@ type blockBody struct {
 	EndsAt       string  `json:"ends_at"`
 	CategoryID   *string `json:"category_id"`
 	CategoryName *string `json:"category_name,omitempty"`
+	TaskID       *string `json:"task_id"`
 }
 
-func categoryIDString(id *uuid.UUID) *string {
+func uuidPtrString(id *uuid.UUID) *string {
 	if id == nil {
 		return nil
 	}
@@ -264,8 +291,9 @@ func toBlockBody(b Block) blockBody {
 		Kind:         string(b.Kind),
 		StartsAt:     b.StartsAt.UTC().Format(time.RFC3339),
 		EndsAt:       b.EndsAt.UTC().Format(time.RFC3339),
-		CategoryID:   categoryIDString(b.CategoryID),
+		CategoryID:   uuidPtrString(b.CategoryID),
 		CategoryName: b.CategoryName,
+		TaskID:       uuidPtrString(b.TaskID),
 	}
 }
 
@@ -303,6 +331,15 @@ func blockInstants(loc *time.Location, req blockRequest) (BlockInput, *Validatio
 			catID = &id
 		}
 	}
+	var taskID *uuid.UUID
+	if req.TaskID != nil && *req.TaskID != "" {
+		id, err := uuid.Parse(*req.TaskID)
+		if err != nil {
+			fields["task_id"] = "must be a UUID"
+		} else {
+			taskID = &id
+		}
+	}
 
 	if len(fields) > 0 {
 		return BlockInput{}, &ValidationError{Fields: fields}
@@ -317,6 +354,7 @@ func blockInstants(loc *time.Location, req blockRequest) (BlockInput, *Validatio
 		StartsAt:   time.Date(d.Year, d.Month, d.Day, sh, sm, 0, 0, loc),
 		EndsAt:     time.Date(d.Year, d.Month, d.Day+endDayOffset, eh, em, 0, 0, loc),
 		CategoryID: catID,
+		TaskID:     taskID,
 	}, nil
 }
 
@@ -361,7 +399,7 @@ func (h *Handler) updateBlock(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.svc.EditBlock(r.Context(), accountID(r), id, in.StartsAt, in.EndsAt, in.CategoryID); err != nil {
+	if err := h.svc.EditBlock(r.Context(), accountID(r), id, in.StartsAt, in.EndsAt, in.CategoryID, in.TaskID); err != nil {
 		writeServiceError(w, r, err)
 		return
 	}
@@ -380,6 +418,25 @@ func (h *Handler) deleteBlock(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// getBlocksForTask serves GET /api/tasks/{id}/blocks — v1.md §7's reverse-lookup
+// view: every block linked to a task, across any date.
+func (h *Handler) getBlocksForTask(w http.ResponseWriter, r *http.Request) {
+	taskID, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	blocks, err := h.svc.BlocksForTask(r.Context(), accountID(r), taskID)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	out := make([]blockBody, len(blocks))
+	for i, b := range blocks {
+		out[i] = toBlockBody(b)
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"blocks": out})
+}
+
 func pathID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -394,13 +451,10 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.As(err, &verr):
 		httpx.WriteError(w, r, httpx.ValidationError(verr.Fields))
-	case errors.Is(err, ErrCategoryNameTaken):
-		httpx.WriteError(w, r, httpx.NewError(http.StatusConflict, httpx.CodeConflict,
-			"A category with this name already exists"))
-	case errors.Is(err, ErrCategoryNotFound):
-		httpx.WriteError(w, r, httpx.NewError(http.StatusNotFound, httpx.CodeNotFound, "Category not found"))
 	case errors.Is(err, ErrBlockNotFound):
 		httpx.WriteError(w, r, httpx.NewError(http.StatusNotFound, httpx.CodeNotFound, "Time block not found"))
+	case errors.Is(err, ErrTaskNotFound):
+		httpx.WriteError(w, r, httpx.NewError(http.StatusNotFound, httpx.CodeNotFound, "Task not found"))
 	default:
 		httpx.WriteError(w, r, err)
 	}

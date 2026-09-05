@@ -72,10 +72,10 @@ func TestAddBlock_CategoryMustBeOwnedAndActive(t *testing.T) {
 	ctx := context.Background()
 	other := newAccount(t, pool, "other-cat@test")
 
-	mine, _ := svc.CreateCategory(ctx, acc, "Deep Work")
-	theirs, _ := svc.CreateCategory(ctx, other, "Theirs")
-	archived, _ := svc.CreateCategory(ctx, acc, "Old")
-	require.NoError(t, svc.ArchiveCategory(ctx, acc, archived.ID))
+	mine := mkCategory(t, pool, acc, "Deep Work")
+	theirs := mkCategory(t, pool, other, "Theirs")
+	archived := mkCategory(t, pool, acc, "Old")
+	archiveCategory(t, pool, archived)
 
 	in := func(cat uuid.UUID) timeline.BlockInput {
 		return timeline.BlockInput{
@@ -84,18 +84,111 @@ func TestAddBlock_CategoryMustBeOwnedAndActive(t *testing.T) {
 		}
 	}
 
-	b, err := svc.AddBlock(ctx, acc, in(mine.ID))
+	b, err := svc.AddBlock(ctx, acc, in(mine))
 	require.NoError(t, err)
-	require.Equal(t, mine.ID, *b.CategoryID)
+	require.Equal(t, mine, *b.CategoryID)
 
-	_, err = svc.AddBlock(ctx, acc, in(theirs.ID))
+	_, err = svc.AddBlock(ctx, acc, in(theirs))
 	requireField(t, err, "category_id")
 
-	_, err = svc.AddBlock(ctx, acc, in(archived.ID))
+	_, err = svc.AddBlock(ctx, acc, in(archived))
 	requireField(t, err, "category_id")
 
 	_, err = svc.AddBlock(ctx, acc, in(uuid.New()))
 	requireField(t, err, "category_id")
+}
+
+func TestAddBlock_TaskLink(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-task@test")
+
+	mine := mkTask(t, pool, acc, "Write report")
+	theirs := mkTask(t, pool, other, "Theirs")
+
+	b, err := svc.AddBlock(ctx, acc, timeline.BlockInput{
+		Kind: timeline.Actual, StartsAt: ts("2025-06-15T09:00:00Z"), EndsAt: ts("2025-06-15T10:00:00Z"),
+		TaskID: &mine,
+	})
+	require.NoError(t, err)
+	require.Equal(t, mine, *b.TaskID)
+	require.Nil(t, b.CategoryID, "uncategorized task -> no inherited category")
+
+	for _, taskID := range []uuid.UUID{theirs, uuid.New()} {
+		_, err := svc.AddBlock(ctx, acc, timeline.BlockInput{
+			Kind: timeline.Planned, StartsAt: ts("2025-06-15T09:00:00Z"), EndsAt: ts("2025-06-15T10:00:00Z"),
+			TaskID: &taskID,
+		})
+		requireField(t, err, "task_id")
+	}
+}
+
+func TestAddBlock_TaskAndCategoryMutuallyExclusive(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	task := mkTask(t, pool, acc, "Write report")
+	cat := mkCategory(t, pool, acc, "Deep Work")
+
+	_, err := svc.AddBlock(ctx, acc, timeline.BlockInput{
+		Kind: timeline.Actual, StartsAt: ts("2025-06-15T09:00:00Z"), EndsAt: ts("2025-06-15T10:00:00Z"),
+		TaskID: &task, CategoryID: &cat,
+	})
+	requireField(t, err, "category_id")
+}
+
+func TestEditBlock_TaskLink(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+
+	catA := mkCategory(t, pool, acc, "A")
+	taskA := mkTaskWithCategory(t, pool, acc, catA, "Task A")
+	taskB := mkTask(t, pool, acc, "Task B")
+
+	b, err := svc.AddBlock(ctx, acc, timeline.BlockInput{
+		Kind: timeline.Planned, StartsAt: ts("2025-06-15T09:00:00Z"), EndsAt: ts("2025-06-15T10:00:00Z"),
+		CategoryID: &catA,
+	})
+	require.NoError(t, err)
+
+	// link to a task -> the standalone category must be cleared in the same edit
+	requireField(t, svc.EditBlock(ctx, acc, b.ID,
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), &catA, &taskA), "category_id")
+	require.NoError(t, svc.EditBlock(ctx, acc, b.ID,
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil, &taskA))
+
+	// re-link to a different task
+	require.NoError(t, svc.EditBlock(ctx, acc, b.ID,
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil, &taskB))
+
+	// unlink -> becomes standalone, may then take its own category
+	require.NoError(t, svc.EditBlock(ctx, acc, b.ID,
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil, nil))
+	require.NoError(t, svc.EditBlock(ctx, acc, b.ID,
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), &catA, nil))
+}
+
+// TestDeleteTask_ClearsBlockLink proves deleting a task clears task_id on its
+// linked blocks (ON DELETE SET NULL) without deleting the blocks — MX-TL's
+// delete-with-links default (v1.md §7).
+func TestDeleteTask_ClearsBlockLink(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+
+	task := mkTask(t, pool, acc, "Doomed task")
+	b, err := svc.AddBlock(ctx, acc, timeline.BlockInput{
+		Kind: timeline.Actual, StartsAt: ts("2025-06-15T09:00:00Z"), EndsAt: ts("2025-06-15T10:00:00Z"),
+		TaskID: &task,
+	})
+	require.NoError(t, err)
+
+	_, delErr := pool.Exec(ctx, `DELETE FROM tasks WHERE id = $1`, task)
+	require.NoError(t, delErr)
+
+	all, err := svc.ListAllBlocks(ctx, acc)
+	require.NoError(t, err)
+	require.Len(t, all, 1)
+	require.Equal(t, b.ID, all[0].ID)
+	require.Nil(t, all[0].TaskID)
 }
 
 func TestEditBlock(t *testing.T) {
@@ -105,20 +198,20 @@ func TestEditBlock(t *testing.T) {
 	b, _ := svc.AddBlock(ctx, acc, timeline.BlockInput{
 		Kind: timeline.Planned, StartsAt: ts("2025-06-15T09:00:00Z"), EndsAt: ts("2025-06-15T10:00:00Z"),
 	})
-	cat, _ := svc.CreateCategory(ctx, acc, "Reading")
+	cat := mkCategory(t, pool, acc, "Reading")
 
-	require.NoError(t, svc.EditBlock(ctx, acc, b.ID, ts("2025-06-15T09:00:00Z"), ts("2025-06-15T11:30:00Z"), &cat.ID))
+	require.NoError(t, svc.EditBlock(ctx, acc, b.ID, ts("2025-06-15T09:00:00Z"), ts("2025-06-15T11:30:00Z"), &cat, nil))
 
 	requireField(t,
-		svc.EditBlock(ctx, acc, b.ID, ts("2025-06-15T11:00:00Z"), ts("2025-06-15T10:00:00Z"), nil), "end")
+		svc.EditBlock(ctx, acc, b.ID, ts("2025-06-15T11:00:00Z"), ts("2025-06-15T10:00:00Z"), nil, nil), "end")
 
 	require.ErrorIs(t, svc.EditBlock(ctx, acc, uuid.New(),
-		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil), timeline.ErrBlockNotFound)
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil, nil), timeline.ErrBlockNotFound)
 
 	// isolation
 	other := newAccount(t, pool, "edit-iso@test")
 	require.ErrorIs(t, svc.EditBlock(ctx, other, b.ID,
-		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil), timeline.ErrBlockNotFound)
+		ts("2025-06-15T09:00:00Z"), ts("2025-06-15T10:00:00Z"), nil, nil), timeline.ErrBlockNotFound)
 }
 
 func TestDeleteBlock(t *testing.T) {

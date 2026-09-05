@@ -12,77 +12,77 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const archiveCategory = `-- name: ArchiveCategory :execrows
-UPDATE categories
-SET archived_at = now()
-WHERE account_id = $1 AND id = $2 AND archived_at IS NULL
+const countBlocksByCategory = `-- name: CountBlocksByCategory :many
+SELECT category_id, count(*) AS total
+FROM time_blocks
+WHERE account_id = $1 AND category_id IS NOT NULL
+GROUP BY category_id
 `
 
-type ArchiveCategoryParams struct {
-	AccountID uuid.UUID
-	ID        uuid.UUID
+type CountBlocksByCategoryRow struct {
+	CategoryID pgtype.UUID
+	Total      int64
 }
 
-func (q *Queries) ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, archiveCategory, arg.AccountID, arg.ID)
+func (q *Queries) CountBlocksByCategory(ctx context.Context, accountID uuid.UUID) ([]CountBlocksByCategoryRow, error) {
+	rows, err := q.db.Query(ctx, countBlocksByCategory, accountID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	items := []CountBlocksByCategoryRow{}
+	for rows.Next() {
+		var i CountBlocksByCategoryRow
+		if err := rows.Scan(&i.CategoryID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-const countAssignableCategory = `-- name: CountAssignableCategory :one
-SELECT count(*)
-FROM categories
-WHERE account_id = $1 AND id = $2 AND archived_at IS NULL
+const countBlocksByTask = `-- name: CountBlocksByTask :many
+SELECT task_id, count(*) AS total
+FROM time_blocks
+WHERE account_id = $1 AND task_id IS NOT NULL
+GROUP BY task_id
 `
 
-type CountAssignableCategoryParams struct {
-	AccountID uuid.UUID
-	ID        uuid.UUID
+type CountBlocksByTaskRow struct {
+	TaskID pgtype.UUID
+	Total  int64
 }
 
-func (q *Queries) CountAssignableCategory(ctx context.Context, arg CountAssignableCategoryParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countAssignableCategory, arg.AccountID, arg.ID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (account_id, name)
-VALUES ($1, $2)
-RETURNING id, name, archived_at, created_at
-`
-
-type CreateCategoryParams struct {
-	AccountID uuid.UUID
-	Name      string
-}
-
-type CreateCategoryRow struct {
-	ID         uuid.UUID
-	Name       string
-	ArchivedAt pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-}
-
-func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (CreateCategoryRow, error) {
-	row := q.db.QueryRow(ctx, createCategory, arg.AccountID, arg.Name)
-	var i CreateCategoryRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.ArchivedAt,
-		&i.CreatedAt,
-	)
-	return i, err
+// A task-linked block's own category_id is always null (CHECK constraint); this
+// powers the inherited-category count so a task-linked block still contributes to
+// its (inherited) category's total in the categories overview (MX-TL).
+func (q *Queries) CountBlocksByTask(ctx context.Context, accountID uuid.UUID) ([]CountBlocksByTaskRow, error) {
+	rows, err := q.db.Query(ctx, countBlocksByTask, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountBlocksByTaskRow{}
+	for rows.Next() {
+		var i CountBlocksByTaskRow
+		if err := rows.Scan(&i.TaskID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const createTimeBlock = `-- name: CreateTimeBlock :one
-INSERT INTO time_blocks (account_id, kind, starts_at, ends_at, category_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, kind, starts_at, ends_at, category_id, created_at
+INSERT INTO time_blocks (account_id, kind, starts_at, ends_at, category_id, task_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, kind, starts_at, ends_at, category_id, task_id, created_at
 `
 
 type CreateTimeBlockParams struct {
@@ -91,6 +91,7 @@ type CreateTimeBlockParams struct {
 	StartsAt   pgtype.Timestamptz
 	EndsAt     pgtype.Timestamptz
 	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
 }
 
 type CreateTimeBlockRow struct {
@@ -99,6 +100,7 @@ type CreateTimeBlockRow struct {
 	StartsAt   pgtype.Timestamptz
 	EndsAt     pgtype.Timestamptz
 	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
 	CreatedAt  pgtype.Timestamptz
 }
 
@@ -109,6 +111,7 @@ func (q *Queries) CreateTimeBlock(ctx context.Context, arg CreateTimeBlockParams
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.CategoryID,
+		arg.TaskID,
 	)
 	var i CreateTimeBlockRow
 	err := row.Scan(
@@ -117,6 +120,7 @@ func (q *Queries) CreateTimeBlock(ctx context.Context, arg CreateTimeBlockParams
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.CategoryID,
+		&i.TaskID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -140,38 +144,8 @@ func (q *Queries) DeleteTimeBlock(ctx context.Context, arg DeleteTimeBlockParams
 	return result.RowsAffected(), nil
 }
 
-const getCategory = `-- name: GetCategory :one
-SELECT id, name, archived_at, created_at
-FROM categories
-WHERE account_id = $1 AND id = $2
-`
-
-type GetCategoryParams struct {
-	AccountID uuid.UUID
-	ID        uuid.UUID
-}
-
-type GetCategoryRow struct {
-	ID         uuid.UUID
-	Name       string
-	ArchivedAt pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-}
-
-func (q *Queries) GetCategory(ctx context.Context, arg GetCategoryParams) (GetCategoryRow, error) {
-	row := q.db.QueryRow(ctx, getCategory, arg.AccountID, arg.ID)
-	var i GetCategoryRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.ArchivedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const getTimeBlock = `-- name: GetTimeBlock :one
-SELECT id, kind, starts_at, ends_at, category_id, created_at
+SELECT id, kind, starts_at, ends_at, category_id, task_id, created_at
 FROM time_blocks
 WHERE account_id = $1 AND id = $2
 `
@@ -187,6 +161,7 @@ type GetTimeBlockRow struct {
 	StartsAt   pgtype.Timestamptz
 	EndsAt     pgtype.Timestamptz
 	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
 	CreatedAt  pgtype.Timestamptz
 }
 
@@ -199,38 +174,46 @@ func (q *Queries) GetTimeBlock(ctx context.Context, arg GetTimeBlockParams) (Get
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.CategoryID,
+		&i.TaskID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
-const listActiveCategories = `-- name: ListActiveCategories :many
-SELECT id, name, archived_at, created_at
-FROM categories
-WHERE account_id = $1 AND archived_at IS NULL
-ORDER BY lower(name)
+const listAllBlocks = `-- name: ListAllBlocks :many
+SELECT id, kind, starts_at, ends_at, category_id, task_id, created_at
+FROM time_blocks
+WHERE account_id = $1
+ORDER BY starts_at
 `
 
-type ListActiveCategoriesRow struct {
+type ListAllBlocksRow struct {
 	ID         uuid.UUID
-	Name       string
-	ArchivedAt pgtype.Timestamptz
+	Kind       string
+	StartsAt   pgtype.Timestamptz
+	EndsAt     pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
 	CreatedAt  pgtype.Timestamptz
 }
 
-func (q *Queries) ListActiveCategories(ctx context.Context, accountID uuid.UUID) ([]ListActiveCategoriesRow, error) {
-	rows, err := q.db.Query(ctx, listActiveCategories, accountID)
+// Every planned and actual block, unbounded, for M8 export completeness.
+func (q *Queries) ListAllBlocks(ctx context.Context, accountID uuid.UUID) ([]ListAllBlocksRow, error) {
+	rows, err := q.db.Query(ctx, listAllBlocks, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListActiveCategoriesRow{}
+	items := []ListAllBlocksRow{}
 	for rows.Next() {
-		var i ListActiveCategoriesRow
+		var i ListAllBlocksRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
-			&i.ArchivedAt,
+			&i.Kind,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.CategoryID,
+			&i.TaskID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -243,10 +226,59 @@ func (q *Queries) ListActiveCategories(ctx context.Context, accountID uuid.UUID)
 	return items, nil
 }
 
+const listBlocksByTask = `-- name: ListBlocksByTask :many
+SELECT id, kind, starts_at, ends_at, category_id, task_id
+FROM time_blocks
+WHERE account_id = $1 AND task_id = $2
+ORDER BY starts_at
+`
+
+type ListBlocksByTaskParams struct {
+	AccountID uuid.UUID
+	TaskID    pgtype.UUID
+}
+
+type ListBlocksByTaskRow struct {
+	ID         uuid.UUID
+	Kind       string
+	StartsAt   pgtype.Timestamptz
+	EndsAt     pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
+}
+
+// Every block (planned and actual, across any date) linked to one task —
+// v1.md §7's "see all of a task's linked time blocks" (reverse of task_id).
+func (q *Queries) ListBlocksByTask(ctx context.Context, arg ListBlocksByTaskParams) ([]ListBlocksByTaskRow, error) {
+	rows, err := q.db.Query(ctx, listBlocksByTask, arg.AccountID, arg.TaskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBlocksByTaskRow{}
+	for rows.Next() {
+		var i ListBlocksByTaskRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.CategoryID,
+			&i.TaskID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBlocksOverlapping = `-- name: ListBlocksOverlapping :many
-SELECT b.id, b.kind, b.starts_at, b.ends_at, b.category_id, c.name AS category_name
+SELECT b.id, b.kind, b.starts_at, b.ends_at, b.category_id, b.task_id
 FROM time_blocks b
-LEFT JOIN categories c ON c.id = b.category_id
 WHERE b.account_id = $1
   AND b.starts_at < $2
   AND b.ends_at > $3
@@ -260,12 +292,12 @@ type ListBlocksOverlappingParams struct {
 }
 
 type ListBlocksOverlappingRow struct {
-	ID           uuid.UUID
-	Kind         string
-	StartsAt     pgtype.Timestamptz
-	EndsAt       pgtype.Timestamptz
-	CategoryID   pgtype.UUID
-	CategoryName pgtype.Text
+	ID         uuid.UUID
+	Kind       string
+	StartsAt   pgtype.Timestamptz
+	EndsAt     pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
 }
 
 func (q *Queries) ListBlocksOverlapping(ctx context.Context, arg ListBlocksOverlappingParams) ([]ListBlocksOverlappingRow, error) {
@@ -283,7 +315,7 @@ func (q *Queries) ListBlocksOverlapping(ctx context.Context, arg ListBlocksOverl
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.CategoryID,
-			&i.CategoryName,
+			&i.TaskID,
 		); err != nil {
 			return nil, err
 		}
@@ -295,29 +327,9 @@ func (q *Queries) ListBlocksOverlapping(ctx context.Context, arg ListBlocksOverl
 	return items, nil
 }
 
-const renameCategory = `-- name: RenameCategory :execrows
-UPDATE categories
-SET name = $3
-WHERE account_id = $1 AND id = $2 AND archived_at IS NULL
-`
-
-type RenameCategoryParams struct {
-	AccountID uuid.UUID
-	ID        uuid.UUID
-	Name      string
-}
-
-func (q *Queries) RenameCategory(ctx context.Context, arg RenameCategoryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, renameCategory, arg.AccountID, arg.ID, arg.Name)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateTimeBlock = `-- name: UpdateTimeBlock :execrows
 UPDATE time_blocks
-SET starts_at = $3, ends_at = $4, category_id = $5
+SET starts_at = $3, ends_at = $4, category_id = $5, task_id = $6
 WHERE account_id = $1 AND id = $2
 `
 
@@ -327,6 +339,7 @@ type UpdateTimeBlockParams struct {
 	StartsAt   pgtype.Timestamptz
 	EndsAt     pgtype.Timestamptz
 	CategoryID pgtype.UUID
+	TaskID     pgtype.UUID
 }
 
 func (q *Queries) UpdateTimeBlock(ctx context.Context, arg UpdateTimeBlockParams) (int64, error) {
@@ -336,6 +349,7 @@ func (q *Queries) UpdateTimeBlock(ctx context.Context, arg UpdateTimeBlockParams
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.CategoryID,
+		arg.TaskID,
 	)
 	if err != nil {
 		return 0, err

@@ -1,0 +1,105 @@
+- generic [ref=f28e3]:
+  - link "Skip to content" [ref=f28e4] [cursor=pointer]:
+    - /url: "#main"
+  - complementary [ref=f28e5]:
+    - link "Productivity OS — home" [ref=f28e6] [cursor=pointer]:
+      - /url: /
+      - generic [ref=f28e10]: Productivity OS
+    - navigation "Primary" [ref=f28e11]:
+      - link "Timeline" [ref=f28e12] [cursor=pointer]:
+        - /url: /timeline
+      - link "Tasks" [ref=f28e19] [cursor=pointer]:
+        - /url: /tasks
+      - link "Board" [ref=f28e24] [cursor=pointer]:
+        - /url: /board
+      - link "Habits" [ref=f28e29] [cursor=pointer]:
+        - /url: /habits
+      - link "Goals" [ref=f28e36] [cursor=pointer]:
+        - /url: /goals
+      - link "Categories" [ref=f28e42] [cursor=pointer]:
+        - /url: /categories
+      - link "Reports" [ref=f28e47] [cursor=pointer]:
+        - /url: /reports
+      - link "Reviews" [ref=f28e52] [cursor=pointer]:
+        - /url: /reviews/daily
+    - generic [ref=f28e58]:
+      - generic [ref=f28e59]:
+        - generic [ref=f28e60]: Theme
+        - radiogroup "Theme" [ref=f28e61]:
+          - radio "Light" [checked] [ref=f28e62] [cursor=pointer]
+          - radio "Dark" [ref=f28e66] [cursor=pointer]
+          - radio "System" [ref=f28e69] [cursor=pointer]
+      - button "qa-tasktimeblock@example.com" [ref=f28e74] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f28e75]: qa
+  - main [ref=f28e77]:
+    - generic [ref=f28e78]:
+      - generic [ref=f28e79]:
+        - generic [ref=f28e80]:
+          - generic [ref=f28e81]:
+            - generic [ref=f28e82]:
+              - generic [ref=f28e83]: Tasks
+              - heading "Tasks" [level=1] [ref=f28e84]
+            - button "Add task" [ref=f28e86] [cursor=pointer]
+          - paragraph [ref=f28e87]: Everything on your plate, grouped by when it's due.
+        - generic [ref=f28e95]:
+          - generic [ref=f28e96]:
+            - generic [ref=f28e97]: "0"
+            - generic [ref=f28e99]:
+              - generic [ref=f28e100]: Total
+              - generic [ref=f28e101]: 0 completed
+          - generic [ref=f28e102]:
+            - generic [ref=f28e103]: "0"
+            - generic [ref=f28e105]: In progress
+          - generic [ref=f28e107]:
+            - generic [ref=f28e108]: "0"
+            - generic [ref=f28e110]: Overdue
+          - generic [ref=f28e112]:
+            - generic [ref=f28e113]: "0"
+            - generic [ref=f28e115]: Due this week
+        - radiogroup "Filter tasks" [ref=f28e88]:
+          - radio "All" [checked] [ref=f28e89] [cursor=pointer]
+          - radio "Today" [ref=f28e90] [cursor=pointer]
+          - radio "Upcoming" [ref=f28e91] [cursor=pointer]
+          - radio "Overdue" [ref=f28e92] [cursor=pointer]
+          - radio "Completed" [ref=f28e93] [cursor=pointer]
+        - status [ref=f28e117]:
+          - paragraph [ref=f28e122]: No tasks yet
+          - paragraph [ref=f28e123]: Add a task to get started.
+          - button "Add task" [ref=f28e124] [cursor=pointer]
+        - dialog [ref=f28e142]:
+          - generic [ref=f28e143]:
+            - generic [ref=f28e144]:
+              - heading "Add task" [level=2] [ref=f28e145]
+              - button "Close" [active] [ref=f28e146] [cursor=pointer]
+            - generic [ref=f28e150]:
+              - generic [ref=f28e151]:
+                - generic [ref=f28e152]:
+                  - text: Title *
+                  - generic [ref=f28e153]: (required)
+                - textbox "Title (required)" [ref=f28e154]
+              - generic [ref=f28e155]:
+                - generic [ref=f28e156]: Description
+                - textbox "Description" [ref=f28e157]
+              - generic [ref=f28e158]:
+                - generic [ref=f28e159]: Due date
+                - textbox "Due date" [ref=f28e160]
+                - generic [ref=f28e161]: Optional.
+            - generic [ref=f28e162]:
+              - button "Cancel" [ref=f28e163] [cursor=pointer]
+              - button "Add" [ref=f28e164] [cursor=pointer]
+      - complementary "Task summary" [ref=f28e125]:
+        - generic [ref=f28e126]:
+          - heading "By status" [level=2] [ref=f28e128]
+          - list [ref=f28e129]:
+            - listitem [ref=f28e130]:
+              - generic [ref=f28e131]: Backlog
+              - generic [ref=f28e132]: "0"
+            - listitem [ref=f28e133]:
+              - generic [ref=f28e134]: To do
+              - generic [ref=f28e135]: "0"
+            - listitem [ref=f28e136]:
+              - generic [ref=f28e137]: In progress
+              - generic [ref=f28e138]: "0"
+            - listitem [ref=f28e139]:
+              - generic [ref=f28e140]: Done
+              - generic [ref=f28e141]: "0"

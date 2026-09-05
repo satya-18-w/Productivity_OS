@@ -20,12 +20,29 @@ const (
 )
 
 type service struct {
-	q *goalsdb.Queries
+	q    *goalsdb.Queries
+	cats CategoryChecker
 }
 
-// NewService builds the goals service over a connection pool.
-func NewService(pool *pgxpool.Pool) Service {
-	return &service{q: goalsdb.New(pool)}
+// NewService builds the goals service over a connection pool. cats validates a
+// category_id a caller assigns (wired to categories.Service by cmd/server —
+// ADR-0009).
+func NewService(pool *pgxpool.Pool, cats CategoryChecker) Service {
+	return &service{q: goalsdb.New(pool), cats: cats}
+}
+
+func (s *service) assertAssignableCategory(ctx context.Context, accountID uuid.UUID, categoryID *uuid.UUID) error {
+	if categoryID == nil {
+		return nil
+	}
+	ok, err := s.cats.AssignableToAccount(ctx, accountID, *categoryID)
+	if err != nil {
+		return fmt.Errorf("check category: %w", err)
+	}
+	if !ok {
+		return &ValidationError{Fields: map[string]string{"category_id": "category not found or archived"}}
+	}
+	return nil
 }
 
 func validateInput(in GoalInput) (GoalInput, *ValidationError) {
@@ -43,7 +60,12 @@ func validateInput(in GoalInput) (GoalInput, *ValidationError) {
 	if len(fields) > 0 {
 		return GoalInput{}, &ValidationError{Fields: fields}
 	}
-	return GoalInput{Title: title, Description: strings.TrimSpace(in.Description), TargetDate: in.TargetDate}, nil
+	return GoalInput{
+		Title:       title,
+		Description: strings.TrimSpace(in.Description),
+		TargetDate:  in.TargetDate,
+		CategoryID:  in.CategoryID,
+	}, nil
 }
 
 func (s *service) CreateGoal(ctx context.Context, accountID uuid.UUID, raw GoalInput) (Goal, error) {
@@ -51,16 +73,20 @@ func (s *service) CreateGoal(ctx context.Context, accountID uuid.UUID, raw GoalI
 	if verr != nil {
 		return Goal{}, verr
 	}
+	if err := s.assertAssignableCategory(ctx, accountID, in.CategoryID); err != nil {
+		return Goal{}, err
+	}
 	row, err := s.q.CreateGoal(ctx, goalsdb.CreateGoalParams{
 		AccountID:   accountID,
 		Title:       in.Title,
 		Description: pgText(in.Description),
 		TargetDate:  pgDate(in.TargetDate),
+		CategoryID:  toPgUUID(in.CategoryID),
 	})
 	if err != nil {
 		return Goal{}, fmt.Errorf("create goal: %w", err)
 	}
-	return toGoal(row.ID, row.Title, row.Description, row.TargetDate, row.Progress, row.CreatedAt, row.UpdatedAt), nil
+	return toGoal(row.ID, row.Title, row.Description, row.TargetDate, row.Progress, row.CategoryID, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (s *service) UpdateGoal(ctx context.Context, accountID, goalID uuid.UUID, raw GoalInput) error {
@@ -68,12 +94,16 @@ func (s *service) UpdateGoal(ctx context.Context, accountID, goalID uuid.UUID, r
 	if verr != nil {
 		return verr
 	}
+	if err := s.assertAssignableCategory(ctx, accountID, in.CategoryID); err != nil {
+		return err
+	}
 	rows, err := s.q.UpdateGoalFields(ctx, goalsdb.UpdateGoalFieldsParams{
 		AccountID:   accountID,
 		ID:          goalID,
 		Title:       in.Title,
 		Description: pgText(in.Description),
 		TargetDate:  pgDate(in.TargetDate),
+		CategoryID:  toPgUUID(in.CategoryID),
 	})
 	if err != nil {
 		return fmt.Errorf("update goal: %w", err)
@@ -120,17 +150,28 @@ func (s *service) ListGoals(ctx context.Context, accountID uuid.UUID) ([]Goal, e
 	}
 	out := make([]Goal, len(rows))
 	for i, r := range rows {
-		out[i] = toGoal(r.ID, r.Title, r.Description, r.TargetDate, r.Progress, r.CreatedAt, r.UpdatedAt)
+		out[i] = toGoal(r.ID, r.Title, r.Description, r.TargetDate, r.Progress, r.CategoryID, r.CreatedAt, r.UpdatedAt)
 	}
 	return out, nil
 }
 
-func toGoal(id uuid.UUID, title string, desc pgtype.Text, target pgtype.Date, progress string, created, updated pgtype.Timestamptz) Goal {
+func (s *service) AssignableToAccount(ctx context.Context, accountID, goalID uuid.UUID) (bool, error) {
+	n, err := s.q.CountAssignableGoal(ctx, goalsdb.CountAssignableGoalParams{
+		AccountID: accountID, ID: goalID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("check goal: %w", err)
+	}
+	return n > 0, nil
+}
+
+func toGoal(id uuid.UUID, title string, desc pgtype.Text, target pgtype.Date, progress string, category pgtype.UUID, created, updated pgtype.Timestamptz) Goal {
 	g := Goal{
 		ID:         id,
 		Title:      title,
 		Progress:   Progress(progress),
 		TargetDate: fromPgDate(target),
+		CategoryID: fromPgUUID(category),
 		CreatedAt:  created.Time.UTC().Format(time.RFC3339),
 		UpdatedAt:  updated.Time.UTC().Format(time.RFC3339),
 	}
@@ -138,6 +179,35 @@ func toGoal(id uuid.UUID, title string, desc pgtype.Text, target pgtype.Date, pr
 		g.Description = desc.String
 	}
 	return g
+}
+
+func (s *service) CountByCategory(ctx context.Context, accountID uuid.UUID) (map[uuid.UUID]int, error) {
+	rows, err := s.q.CountGoalsByCategory(ctx, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("count goals by category: %w", err)
+	}
+	out := make(map[uuid.UUID]int, len(rows))
+	for _, r := range rows {
+		if id := fromPgUUID(r.CategoryID); id != nil {
+			out[*id] = int(r.Total)
+		}
+	}
+	return out, nil
+}
+
+func toPgUUID(id *uuid.UUID) pgtype.UUID {
+	if id == nil {
+		return pgtype.UUID{}
+	}
+	return pgtype.UUID{Bytes: *id, Valid: true}
+}
+
+func fromPgUUID(v pgtype.UUID) *uuid.UUID {
+	if !v.Valid {
+		return nil
+	}
+	id := uuid.UUID(v.Bytes)
+	return &id
 }
 
 func pgText(s string) pgtype.Text {

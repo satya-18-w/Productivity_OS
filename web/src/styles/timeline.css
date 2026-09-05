@@ -10,6 +10,54 @@
   --tl-axis-w: 52px;
 }
 
+/* --- Focus timer (G2) — Day rail, `PomodoroCard` ------------------------- */
+.pomodoro__title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-semibold);
+  margin: 0 0 var(--sp-3);
+}
+.pomodoro__ring-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 140px;
+  margin: var(--sp-4) auto;
+}
+.pomodoro__ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.pomodoro__ring-track,
+.pomodoro__ring-fill {
+  fill: none;
+  stroke-width: 8;
+}
+.pomodoro__ring-track { stroke: var(--surface-2); }
+.pomodoro__ring-fill {
+  stroke: var(--brand);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--dur) linear;
+}
+.pomodoro__time {
+  position: absolute;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.pomodoro__actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+}
+.pomodoro__hint {
+  text-align: center;
+  margin: var(--sp-3) 0 0;
+}
+
 /* block dialog form */
 .tl2-form {
   display: flex;
@@ -27,6 +75,47 @@
   font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-secondary);
+}
+.tl2-form__linked-task {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.tl2-form__linked-task a {
+  color: var(--brand);
+  font-weight: var(--fw-semibold);
+}
+
+/* "Scheduled blocks" section (TaskDialog, edit mode) — reuses this shared form
+   primitive stylesheet, same as TaskDialog's own <form className="tl2-form">. */
+.tl2-form__scheduled {
+  border-top: 1px solid var(--border);
+  padding-top: var(--sp-3);
+}
+.tl2-form__scheduled-label {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  margin: 0 0 var(--sp-2);
+}
+.tl2-form__scheduled-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.tl2-form__scheduled-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+}
+.tl2-form__scheduled-list a {
+  color: var(--brand);
+  font-weight: var(--fw-semibold);
+  margin-left: auto;
 }
 
 .tl2__toolbar {
@@ -68,12 +157,28 @@
   text-align: left;
   color: var(--text);
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  border-left: 3px solid var(--agenda-cat, var(--cat-other));
+  /* Same restrained tint as .tl2__block — echoes the Day grid's category
+     colouring (VP1 calm surface) rather than the reference's saturated fill. */
+  background: color-mix(in oklab, var(--agenda-cat, var(--cat-other)) 6%, var(--surface));
   transition: background var(--dur) var(--ease);
 }
 .agenda__list li:first-child .agenda__row { border-top: 0; }
-.agenda__row:hover { background: var(--surface-hover); }
+.agenda__row:hover { background: color-mix(in oklab, var(--agenda-cat, var(--cat-other)) 6%, var(--surface-hover)); }
 .agenda__row--past { opacity: 0.6; }
+/* Task-linked rows get a thicker left edge — same structural cue as the Day
+   grid's .tl2__block--linked, no new color. */
+.agenda__row--linked { border-left-width: 5px; }
+
+.agenda__open-task {
+  display: block;
+  padding: 4px var(--sp-4) 10px calc(var(--sp-4) + 118px + var(--sp-3));
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--brand);
+  background: color-mix(in oklab, var(--agenda-cat, var(--cat-other)) 6%, var(--surface));
+}
+.agenda__open-task:hover { text-decoration: underline; }
 
 .agenda__time {
   flex-shrink: 0;
@@ -84,7 +189,96 @@
 }
 .agenda__time-sep { margin: 0 4px; color: var(--text-muted); }
 
+/* Rail "Today's tasks" widget (reference timeline.png right rail). */
+.today-tasks__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.today-tasks__title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+.today-tasks__list {
+  list-style: none;
+  margin: 0 0 var(--sp-2);
+  padding: 0;
+}
+.today-tasks__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-small);
+}
+.today-tasks__row:first-child { border-top: 0; }
+.today-tasks__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-tasks__name--done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.today-tasks__link {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--brand);
+}
+
+/* Foot "Add an agenda item" affordance (reference timeline-agenda.png). */
+.agenda__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 12px var(--sp-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+}
+.agenda__add:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* A continuous rail through the category dots (timeline-agenda.png visual
+   language) — each row draws the segment for its own height; adjoining rows
+   meet at the shared border, reading as one line top-to-bottom. */
+.agenda__rail {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+}
+.agenda__rail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+.agenda__list li:first-child .agenda__rail::before { top: 50%; }
+.agenda__list li:last-child .agenda__rail::before { bottom: 50%; }
 .agenda__dot {
+  position: relative;
+  z-index: 1;
   width: 9px;
   height: 9px;
   border-radius: var(--radius-full);
@@ -102,6 +296,7 @@
 @media (max-width: 480px) {
   .agenda__row { flex-wrap: wrap; }
   .agenda__time { width: 100%; }
+  .agenda__rail::before { display: none; } /* rows wrap; a fixed-x rail no longer lines up */
 }
 
 .tl2__scroll {
@@ -172,8 +367,7 @@
   border-radius: var(--radius-xs);
   padding: 3px 7px;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: flex-start;
   overflow: hidden;
   text-align: left;
   color: var(--text);
@@ -186,7 +380,25 @@
   border-style: dashed;
   background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 10%, var(--surface));
 }
+/* Task-linked blocks get a thicker left edge — a structural cue for the
+   association, not a new color (the category tint still comes from --tl-cat,
+   inherited from the linked task). */
+.tl2__block--linked {
+  border-left-width: 4px;
+}
+/* One line always — a stacked time+category layout needs ~40px to avoid
+   clipping, but plenty of realistic blocks (a 30–45min routine or meeting)
+   render shorter than that. Single-line + ellipsis keeps the category name
+   legible at any block height, including the absolute-minimum-height floor. */
+.tl2__block-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  line-height: var(--lh-tight);
+}
 .tl2__block-time {
+  flex-shrink: 0;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
@@ -208,7 +420,7 @@
   border-top: 2px solid var(--danger);
   pointer-events: none;
 }
-.tl2__lane:first-of-type .tl2__now::before {
+.tl2__lane--planned .tl2__now::before {
   content: attr(data-time);
   position: absolute;
   top: -8px;
@@ -221,3 +433,191 @@
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Timeline — Week (G2) ------------------------------------------------ */
+.tl-week__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.tl-week__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(140px, 1fr));
+  min-width: 700px;
+}
+.tl-week__col {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+.tl-week__col + .tl-week__col { border-left: 1px solid var(--border); }
+.tl-week__col-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-2);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+.tl-week__col-head:hover { background: var(--surface-hover); }
+.tl-week__col-weekday {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+}
+.tl-week__col-date {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.tl-week__col-head.is-today .tl-week__col-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.tl-week__empty {
+  flex: 1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  padding-top: var(--sp-4);
+}
+.tl-week__stack {
+  list-style: none;
+  margin: 0;
+  /* Extra bottom padding: grid stretches every column to the tallest one's
+     height, and without headroom the last chip's text can sit flush against
+     that computed edge (sub-pixel rounding). */
+  padding: var(--sp-2) var(--sp-2) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.tl-week__chip {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
+  text-align: left;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 16%, var(--surface));
+  border: 1.5px solid var(--tl-cat, var(--cat-other));
+}
+.tl-week__chip:hover { filter: brightness(1.04); }
+.tl-week__chip--planned {
+  border-style: dashed;
+  background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 10%, var(--surface));
+}
+.tl-week__chip-time {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.tl-week__chip-cat {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Timeline — Month (G2) ----------------------------------------------- */
+/* At narrow widths, 7 columns squeezed to fit produce unreadable micro-cells
+   (chip text truncates to 2-3 characters) — scroll horizontally instead,
+   same trade-off and pattern as Week's `.tl-week__scroll`. */
+.tl-month__scroll { overflow-x: auto; }
+.tl-month { min-width: 700px; }
+.tl-month__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 2px;
+  margin-bottom: var(--sp-2);
+}
+.tl-month__weekdays span {
+  text-align: center;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tl-month__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--border);
+  gap: 1px;
+}
+.tl-month__cell {
+  background: var(--surface);
+  min-height: 96px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tl-month__cell--outside { background: var(--surface-2); }
+.tl-month__cell--outside .tl-month__daynum { color: var(--text-muted); }
+.tl-month__daynum {
+  align-self: flex-start;
+  padding: 2px 4px;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+}
+.tl-month__today-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.tl-month__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tl-month__chip {
+  width: 100%;
+  display: block;
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 18%, var(--surface));
+  border: 1px solid var(--tl-cat, var(--cat-other));
+}
+.tl-month__chip--planned {
+  border-style: dashed;
+  background: color-mix(in oklab, var(--tl-cat, var(--cat-other)) 10%, var(--surface));
+}
+.tl-month__more {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: left;
+  padding: 1px 4px;
+}
+.tl-month__more:hover { color: var(--text); text-decoration: underline; }

@@ -1,0 +1,82 @@
+/* ============================================================================
+   Daily / Weekly Review (Phase 10/11) — no reference image; built from shared
+   primitives + form patterns (`v1.md §11/§12`).
+   ========================================================================== */
+
+.review-ref__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-5);
+}
+
+.review-ref__heading {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.review-ref__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.review-ref__habits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-sm);
+}
+.review-ref__habits li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+}
+.review-ref__habits li.is-done {
+  color: var(--text);
+}
+.review-ref__habits li.is-done svg {
+  color: var(--success);
+}
+
+.review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+}
+
+/* week stepper (Weekly review) — same pattern as .habit-toolbar__week */
+.review-weekstepper {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.review-weekstepper__label {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  min-width: 22ch;
+  text-align: center;
+}
+
+.review-ref__stat {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* prompts form — one Field per fixed prompt, stacked (tokens only) */
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}

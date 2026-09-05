@@ -4,11 +4,14 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
+	"github.com/satya-18-w/productivity-os/internal/categories"
+	"github.com/satya-18-w/productivity-os/internal/goals"
 	"github.com/satya-18-w/productivity-os/internal/platform/pgtest"
 	"github.com/satya-18-w/productivity-os/internal/platform/timezone"
 	"github.com/satya-18-w/productivity-os/internal/tasks"
@@ -17,7 +20,36 @@ import (
 func setup(t *testing.T) (tasks.Service, *pgxpool.Pool, uuid.UUID) {
 	t.Helper()
 	pool := pgtest.Pool(t)
-	return tasks.NewService(pool), pool, newAccount(t, pool, "owner@test")
+	catSvc := categories.NewService(pool)
+	return tasks.NewService(pool, catSvc, goals.NewService(pool, catSvc)), pool, newAccount(t, pool, "owner@test")
+}
+
+// mkGoal inserts a goal directly (tasks tests only need one to exist and be
+// assignable — goal CRUD is exercised in the goals package).
+func mkGoal(t *testing.T, pool *pgxpool.Pool, acc uuid.UUID, title string) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`INSERT INTO goals (account_id, title) VALUES ($1, $2) RETURNING id`,
+		acc, title).Scan(&id))
+	return id
+}
+
+// mkCategory inserts an active category directly (tasks tests only need one to
+// exist and be assignable — category CRUD is exercised in the categories package).
+func mkCategory(t *testing.T, pool *pgxpool.Pool, acc uuid.UUID, name string) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`INSERT INTO categories (account_id, name) VALUES ($1, $2) RETURNING id`, acc, name).Scan(&id))
+	return id
+}
+
+func archiveCategory(t *testing.T, pool *pgxpool.Pool, id uuid.UUID) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(),
+		`UPDATE categories SET archived_at = now() WHERE id = $1`, id)
+	require.NoError(t, err)
 }
 
 func newAccount(t *testing.T, pool *pgxpool.Pool, email string) uuid.UUID {
@@ -146,6 +178,224 @@ func TestBoard(t *testing.T) {
 	require.Empty(t, board.Columns[1].Tasks)
 	require.Len(t, board.Columns[3].Tasks, 1)
 	require.Equal(t, b.ID, board.Columns[3].Tasks[0].ID)
+}
+
+func TestTaskCategory(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-cat@test")
+
+	mine := mkCategory(t, pool, acc, "Deep Work")
+	theirs := mkCategory(t, pool, other, "Theirs")
+	archived := mkCategory(t, pool, acc, "Old")
+	archiveCategory(t, pool, archived)
+
+	task, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Ship it", CategoryID: &mine})
+	require.NoError(t, err)
+	require.Equal(t, mine, *task.CategoryID)
+
+	for _, cat := range []uuid.UUID{theirs, archived, uuid.New()} {
+		_, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "x", CategoryID: &cat})
+		requireField(t, err, "category_id")
+	}
+
+	// change on update
+	other2 := mkCategory(t, pool, acc, "Focus")
+	require.NoError(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "Ship it", CategoryID: &other2}))
+	board, _ := svc.Board(ctx, acc)
+	require.Equal(t, other2, *board.Columns[0].Tasks[0].CategoryID)
+
+	// clear on update
+	require.NoError(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "Ship it"}))
+	board, _ = svc.Board(ctx, acc)
+	require.Nil(t, board.Columns[0].Tasks[0].CategoryID)
+
+	// foreign category on update -> 400
+	requireField(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "x", CategoryID: &theirs}), "category_id")
+}
+
+func TestTaskGoalLink(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-goal@test")
+
+	mine := mkGoal(t, pool, acc, "Ship MX3")
+	theirs := mkGoal(t, pool, other, "Theirs")
+
+	task, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Ship it", GoalID: &mine})
+	require.NoError(t, err)
+	require.Equal(t, mine, *task.GoalID)
+
+	for _, g := range []uuid.UUID{theirs, uuid.New()} {
+		_, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "x", GoalID: &g})
+		requireField(t, err, "goal_id")
+	}
+
+	// change on update
+	other2 := mkGoal(t, pool, acc, "Other goal")
+	require.NoError(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "Ship it", GoalID: &other2}))
+	board, _ := svc.Board(ctx, acc)
+	require.Equal(t, other2, *board.Columns[0].Tasks[0].GoalID)
+
+	// clear on update
+	require.NoError(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "Ship it"}))
+	board, _ = svc.Board(ctx, acc)
+	require.Nil(t, board.Columns[0].Tasks[0].GoalID)
+
+	// foreign goal on update -> 400
+	requireField(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "x", GoalID: &theirs}), "goal_id")
+}
+
+// TestTaskGoalDeleteClearsLink proves deleting a goal clears goal_id on its linked
+// tasks (ON DELETE SET NULL) without deleting the tasks — MX3's delete-with-links
+// default (v1.md §10).
+func TestTaskGoalDeleteClearsLink(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+
+	g := mkGoal(t, pool, acc, "Doomed goal")
+	task, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Survives", GoalID: &g})
+	require.NoError(t, err)
+
+	_, delErr := pool.Exec(ctx, `DELETE FROM goals WHERE id = $1`, g)
+	require.NoError(t, delErr)
+
+	board, err := svc.Board(ctx, acc)
+	require.NoError(t, err)
+	require.Len(t, board.Columns[0].Tasks, 1)
+	require.Equal(t, task.ID, board.Columns[0].Tasks[0].ID)
+	require.Nil(t, board.Columns[0].Tasks[0].GoalID)
+}
+
+func TestTaskPriority(t *testing.T) {
+	svc, _, acc := setup(t)
+	ctx := context.Background()
+
+	high := tasks.High
+	task, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Ship it", Priority: &high})
+	require.NoError(t, err)
+	require.Equal(t, tasks.High, *task.Priority)
+
+	for _, p := range []tasks.Priority{tasks.Medium, tasks.Low} {
+		p := p
+		require.NoError(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "Ship it", Priority: &p}))
+		board, _ := svc.Board(ctx, acc)
+		require.Equal(t, p, *board.Columns[0].Tasks[0].Priority)
+	}
+
+	// clear on update
+	require.NoError(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "Ship it"}))
+	board, _ := svc.Board(ctx, acc)
+	require.Nil(t, board.Columns[0].Tasks[0].Priority)
+
+	// invalid value -> 400, on both create and update
+	bad := tasks.Priority("URGENT")
+	_, err = svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "x", Priority: &bad})
+	requireField(t, err, "priority")
+	requireField(t, svc.UpdateTask(ctx, acc, task.ID, tasks.TaskInput{Title: "x", Priority: &bad}), "priority")
+}
+
+// TestAssignableToAccount covers the MX-TL cross-module check timeline.TaskChecker
+// relies on (mirrors categories/goals' identical method).
+func TestAssignableToAccount(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-assignable@test")
+
+	mine, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Mine"})
+	require.NoError(t, err)
+	theirs, err := svc.CreateTask(ctx, other, tasks.TaskInput{Title: "Theirs"})
+	require.NoError(t, err)
+
+	ok, err := svc.AssignableToAccount(ctx, acc, mine.ID)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	ok, err = svc.AssignableToAccount(ctx, acc, theirs.ID)
+	require.NoError(t, err)
+	require.False(t, ok, "not the caller's account")
+
+	ok, err = svc.AssignableToAccount(ctx, acc, uuid.New())
+	require.NoError(t, err)
+	require.False(t, ok, "unknown task")
+}
+
+// TestCategoriesForTasks covers the MX-TL bulk lookup timeline uses to resolve a
+// task-linked block's inherited category.
+func TestCategoriesForTasks(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-catfortasks@test")
+
+	cat := mkCategory(t, pool, acc, "Deep Work")
+	withCat, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Categorized", CategoryID: &cat})
+	require.NoError(t, err)
+	noCat, err := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "Uncategorized"})
+	require.NoError(t, err)
+	_, err = svc.CreateTask(ctx, other, tasks.TaskInput{Title: "Other's task"})
+	require.NoError(t, err)
+
+	out, err := svc.CategoriesForTasks(ctx, acc)
+	require.NoError(t, err)
+	require.Len(t, out, 2, "only the caller's tasks")
+	require.Equal(t, cat, *out[withCat.ID])
+	require.Nil(t, out[noCat.ID])
+}
+
+func TestCountByCategory(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-count@test")
+
+	catA := mkCategory(t, pool, acc, "A")
+	catB := mkCategory(t, pool, acc, "B")
+	otherCat := mkCategory(t, pool, other, "Other")
+
+	_, _ = svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "1", CategoryID: &catA})
+	_, _ = svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "2", CategoryID: &catA})
+	_, _ = svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "3", CategoryID: &catB})
+	_, _ = svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "4"}) // uncategorized
+	_, _ = svc.CreateTask(ctx, other, tasks.TaskInput{Title: "5", CategoryID: &otherCat})
+
+	counts, err := svc.CountByCategory(ctx, acc)
+	require.NoError(t, err)
+	require.Equal(t, map[uuid.UUID]int{catA: 2, catB: 1}, counts, "only the caller's tasks, no zero/uncategorized entry")
+}
+
+func TestDoneCountInRange(t *testing.T) {
+	svc, pool, acc := setup(t)
+	ctx := context.Background()
+	other := newAccount(t, pool, "other-throughput@test")
+
+	a, _ := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "a"})
+	b, _ := svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "b"})
+	_, _ = svc.CreateTask(ctx, acc, tasks.TaskInput{Title: "c"}) // never DONE
+	require.NoError(t, svc.MoveTask(ctx, acc, a.ID, tasks.Done))
+	require.NoError(t, svc.MoveTask(ctx, acc, b.ID, tasks.Todo))
+	require.NoError(t, svc.MoveTask(ctx, acc, b.ID, tasks.Done))
+	// bounce a out and back into DONE — still counts once
+	require.NoError(t, svc.MoveTask(ctx, acc, a.ID, tasks.Todo))
+	require.NoError(t, svc.MoveTask(ctx, acc, a.ID, tasks.Done))
+
+	otherTask, _ := svc.CreateTask(ctx, other, tasks.TaskInput{Title: "other"})
+	require.NoError(t, svc.MoveTask(ctx, other, otherTask.ID, tasks.Done))
+
+	from := time.Now().Add(-time.Hour)
+	to := time.Now().Add(time.Hour)
+
+	n, err := svc.DoneCountInRange(ctx, acc, from, to)
+	require.NoError(t, err)
+	require.Equal(t, 2, n, "a and b, each counted once despite a bouncing in and out")
+
+	// a range that excludes every transition -> 0
+	n, err = svc.DoneCountInRange(ctx, acc, from.Add(-48*time.Hour), from.Add(-24*time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, 0, n)
+
+	// isolation: the caller's count never includes other's task
+	n, err = svc.DoneCountInRange(ctx, other, from, to)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
 }
 
 func TestTaskIsolation(t *testing.T) {

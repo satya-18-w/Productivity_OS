@@ -1,0 +1,49 @@
+- generic [ref=f37e3]:
+  - link "Skip to content" [ref=f37e4] [cursor=pointer]:
+    - /url: "#main"
+  - complementary [ref=f37e5]:
+    - link "Productivity OS — home" [ref=f37e6] [cursor=pointer]:
+      - /url: /
+      - generic [ref=f37e10]: Productivity OS
+    - navigation "Primary" [ref=f37e11]:
+      - link "Timeline" [ref=f37e12] [cursor=pointer]:
+        - /url: /timeline
+      - link "Tasks" [ref=f37e19] [cursor=pointer]:
+        - /url: /tasks
+      - link "Board" [ref=f37e24] [cursor=pointer]:
+        - /url: /board
+      - link "Habits" [ref=f37e29] [cursor=pointer]:
+        - /url: /habits
+      - link "Goals" [ref=f37e36] [cursor=pointer]:
+        - /url: /goals
+      - link "Categories" [ref=f37e42] [cursor=pointer]:
+        - /url: /categories
+      - link "Reports" [ref=f37e47] [cursor=pointer]:
+        - /url: /reports
+      - link "Reviews" [ref=f37e52] [cursor=pointer]:
+        - /url: /reviews/daily
+    - generic [ref=f37e58]:
+      - generic [ref=f37e59]:
+        - generic [ref=f37e60]: Theme
+        - radiogroup "Theme" [ref=f37e61]:
+          - radio "Light" [checked] [ref=f37e62] [cursor=pointer]
+          - radio "Dark" [ref=f37e66] [cursor=pointer]
+          - radio "System" [ref=f37e69] [cursor=pointer]
+      - button "qa-tasktimeblock@example.com" [ref=f37e74] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f37e75]: qa
+  - main [ref=f37e77]:
+    - generic [ref=f37e79]:
+      - generic [ref=f37e80]:
+        - generic [ref=f37e81]:
+          - generic [ref=f37e82]:
+            - generic [ref=f37e83]: Tasks
+            - heading "Tasks" [level=1] [ref=f37e84]
+          - button "Add task" [ref=f37e86] [cursor=pointer]
+        - paragraph [ref=f37e87]: Everything on your plate, grouped by when it's due.
+      - radiogroup "Filter tasks" [ref=f37e88]:
+        - radio "All" [checked] [ref=f37e89] [cursor=pointer]
+        - radio "Today" [ref=f37e90] [cursor=pointer]
+        - radio "Upcoming" [ref=f37e91] [cursor=pointer]
+        - radio "Overdue" [ref=f37e92] [cursor=pointer]
+        - radio "Completed" [ref=f37e93] [cursor=pointer]
+      - paragraph [ref=f37e94]: Loading…

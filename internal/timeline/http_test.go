@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
+	"github.com/satya-18-w/productivity-os/internal/categories"
 	"github.com/satya-18-w/productivity-os/internal/platform/pgtest"
 	"github.com/satya-18-w/productivity-os/internal/platform/reqctx"
 	"github.com/satya-18-w/productivity-os/internal/timeline"
@@ -27,14 +29,21 @@ func stubProtector(accountID uuid.UUID) timeline.Protector {
 
 func httpSetup(t *testing.T) (*httptest.Server, uuid.UUID) {
 	t.Helper()
+	srv, _, acc := httpSetupWithPool(t)
+	return srv, acc
+}
+
+func httpSetupWithPool(t *testing.T) (*httptest.Server, *pgxpool.Pool, uuid.UUID) {
+	t.Helper()
 	pool := pgtest.Pool(t)
 	acc := newAccount(t, pool, "http@test")
 	mux := http.NewServeMux()
 	z := fakeZone{}
-	timeline.NewHandler(timeline.NewService(pool, z), z).Mount(mux, stubProtector(acc), stubProtector(acc))
+	svc := timeline.NewService(pool, z, categories.NewService(pool), newTasksSvc(pool))
+	timeline.NewHandler(svc, z).Mount(mux, stubProtector(acc), stubProtector(acc))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv, acc
+	return srv, pool, acc
 }
 
 func do(t *testing.T, srv *httptest.Server, method, path, body string) (*http.Response, map[string]any) {
@@ -47,44 +56,6 @@ func do(t *testing.T, srv *httptest.Server, method, path, body string) (*http.Re
 	var m map[string]any
 	_ = json.NewDecoder(resp.Body).Decode(&m)
 	return resp, m
-}
-
-func TestCategoryEndpoints(t *testing.T) {
-	srv, _ := httpSetup(t)
-
-	resp, body := do(t, srv, http.MethodPost, "/api/categories", `{"name":"Gym"}`)
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
-	require.Equal(t, "Gym", body["name"])
-	id := body["id"].(string)
-
-	// duplicate -> 409
-	resp, body = do(t, srv, http.MethodPost, "/api/categories", `{"name":"gym"}`)
-	require.Equal(t, http.StatusConflict, resp.StatusCode)
-	require.Equal(t, "CONFLICT", body["error"].(map[string]any)["code"])
-
-	// invalid -> 400
-	resp, _ = do(t, srv, http.MethodPost, "/api/categories", `{"name":"  "}`)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-
-	// rename -> 204
-	resp, _ = do(t, srv, http.MethodPatch, "/api/categories/"+id, `{"name":"Gym & Cardio"}`)
-	require.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-	// list reflects it
-	_, body = do(t, srv, http.MethodGet, "/api/categories", "")
-	cats := body["categories"].([]any)
-	require.Len(t, cats, 1)
-	require.Equal(t, "Gym & Cardio", cats[0].(map[string]any)["name"])
-
-	// archive -> 204, then gone from list
-	resp, _ = do(t, srv, http.MethodPost, "/api/categories/"+id+"/archive", "")
-	require.Equal(t, http.StatusNoContent, resp.StatusCode)
-	_, body = do(t, srv, http.MethodGet, "/api/categories", "")
-	require.Empty(t, body["categories"])
-
-	// bad path id -> 404
-	resp, _ = do(t, srv, http.MethodPatch, "/api/categories/not-a-uuid", `{"name":"X"}`)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func TestBlockEndpoints_WallClock(t *testing.T) {
@@ -137,4 +108,98 @@ func TestTimelineEndpoint_MissingDate(t *testing.T) {
 	srv, _ := httpSetup(t)
 	resp, _ := do(t, srv, http.MethodGet, "/api/timeline", "")
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestTimelineRangeEndpoint(t *testing.T) {
+	srv, _ := httpSetup(t)
+
+	do(t, srv, http.MethodPost, "/api/blocks",
+		`{"kind":"planned","date":"2025-06-15","start":"09:00","end":"10:00"}`)
+	do(t, srv, http.MethodPost, "/api/blocks",
+		`{"kind":"actual","date":"2025-06-17","start":"09:00","end":"10:00"}`)
+
+	resp, body := do(t, srv, http.MethodGet, "/api/timeline/range?from=2025-06-15&to=2025-06-17", "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "2025-06-15", body["from"])
+	require.Equal(t, "2025-06-17", body["to"])
+
+	days := body["days"].([]any)
+	require.Len(t, days, 3)
+	require.Equal(t, "2025-06-15", days[0].(map[string]any)["date"])
+	require.Len(t, days[0].(map[string]any)["planned"].([]any), 1)
+	require.Len(t, days[1].(map[string]any)["planned"].([]any), 0, "June 16 empty")
+	require.Len(t, days[2].(map[string]any)["actual"].([]any), 1)
+
+	// to before from -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/timeline/range?from=2025-06-17&to=2025-06-15", "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// malformed date -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/timeline/range?from=not-a-date&to=2025-06-17", "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// missing params -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/timeline/range", "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestBlocksForTaskEndpoint(t *testing.T) {
+	srv, pool, acc := httpSetupWithPool(t)
+
+	var taskID uuid.UUID
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`INSERT INTO tasks (account_id, title, state) VALUES ($1, 'Write report', 'BACKLOG') RETURNING id`,
+		acc).Scan(&taskID))
+
+	resp, body := do(t, srv, http.MethodPost, "/api/blocks",
+		`{"kind":"planned","date":"2025-06-15","start":"09:00","end":"10:00","task_id":"`+taskID.String()+`"}`)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, taskID.String(), body["task_id"])
+
+	resp, list := do(t, srv, http.MethodGet, "/api/tasks/"+taskID.String()+"/blocks", "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	blocks := list["blocks"].([]any)
+	require.Len(t, blocks, 1)
+	require.Equal(t, taskID.String(), blocks[0].(map[string]any)["task_id"])
+
+	// unknown task -> 404
+	resp, _ = do(t, srv, http.MethodGet, "/api/tasks/"+uuid.NewString()+"/blocks", "")
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	// malformed id -> 404
+	resp, _ = do(t, srv, http.MethodGet, "/api/tasks/not-a-uuid/blocks", "")
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestComparisonEndpoint_Range(t *testing.T) {
+	srv, _ := httpSetup(t)
+
+	do(t, srv, http.MethodPost, "/api/blocks",
+		`{"kind":"actual","date":"2025-06-15","start":"09:00","end":"10:00"}`)
+	do(t, srv, http.MethodPost, "/api/blocks",
+		`{"kind":"actual","date":"2025-06-16","start":"09:00","end":"11:00"}`)
+
+	resp, body := do(t, srv, http.MethodGet, "/api/comparison?from=2025-06-15&to=2025-06-16", "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "2025-06-15", body["from"])
+	require.Equal(t, "2025-06-16", body["to"])
+	require.Nil(t, body["date"], "range response carries no date field")
+
+	cats := body["categories"].([]any)
+	require.Len(t, cats, 1)
+	require.Equal(t, float64(10800), cats[0].(map[string]any)["actual_seconds"])
+
+	// to before from -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/comparison?from=2025-06-16&to=2025-06-15", "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// malformed from -> 400
+	resp, _ = do(t, srv, http.MethodGet, "/api/comparison?from=not-a-date&to=2025-06-16", "")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// plain ?date= still works and carries no from/to
+	resp, body = do(t, srv, http.MethodGet, "/api/comparison?date=2025-06-15", "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "2025-06-15", body["date"])
+	require.Nil(t, body["from"])
 }

@@ -95,3 +95,51 @@ export.
 §4.1 shell · §4.2 header · §4.7 card · §4.12 data-viz primitives · existing `table.totals`
 in `web/src/styles.css` · `dataviz` skill · `requirements` §13 (+ Q7, Q8, Q10), N4 ·
 `visual-principles.md` VP3, VP10.
+
+---
+
+## Phase 9 — Reports — Status: ✅ COMPLETE (2026-09-04)
+
+Route `/reports` → `ReportsScreen` (`web/src/features/reports/`). **Backend: none exists**
+— the entire screen runs on deterministic mock data pending the reports API (full spec in
+`docs/left.md`, "Phase 9 — Reports").
+
+**R1 resolved** (design-system.md §6.2, now moved to §6.1) — the five reports render as:
+1. Time by category → **horizontal bars**, one per category incl. explicit "Uncategorized"
+   (Q8), coloured via the existing `categoryColor()` palette, literal duration always
+   shown as text (never bar-only), plus a total-time caption.
+2. Planned vs actual by category → **table**, reusing `table.totals`/`.pos`/`.neg` exactly
+   as Timeline's comparison card does, with a totals row.
+3. Habit completion → **table + `ProgressBar`** per habit (a legitimate progress-bar use,
+   unlike Goals — §13 explicitly wants a completion rate here), "`completed / range days
+   (rate%)`" as literal text alongside the bar.
+4. Task throughput → a single **`StatCard`** (count of tasks that entered `DONE` in range).
+5. Daily actual totals → **vertical CSS bar chart**, one bar per day, horizontally
+   scrollable for long ranges, native `title` tooltips carrying the literal value.
+
+No charting library added — all five are plain HTML/CSS per the `dataviz` skill's
+"table/stat-tile first, simplest mark that does the job" guidance and P3 (figures are the
+point, charts secondary).
+
+- [x] `PageHeader` + `DateRangePicker` (From/To date inputs + Last 7/30/90-day presets),
+      range read/written to `?from=&to=` so a link to a specific range is shareable.
+      Default range: trailing 30 days (the "Cannot be inferred" question above — resolved
+      as part of this phase; no persisted last-used range, no "this month" preset per §13
+      minimalism).
+- [x] A persistent **"⚠ Sample data"** notice (`role="note"`) while the mock stands in.
+- [x] **Dropped per spec:** donuts, the 7-tab structure, period-over-period deltas, trend
+      lines, insights/streak/goal widgets, per-report export — none are V1 (§13, §6.4).
+- [x] No rail (minimal, per D6/VP3 — same call as every other Phase 6+ screen).
+- [x] Responsive — `reports-grid` 2-up → 1-up; the daily-totals bar chart scrolls in its
+      own container rather than the page. Light + dark verified.
+- [x] Tests (25) — `reportsData` (determinism, inclusive date range, Uncategorized bucket,
+      planned-vs-actual excludes it, `differenceSeconds` math, habit `rangeDays`, default
+      30-day range), one test file per report component, `ReportsScreen` (all 5 headings +
+      sample-data notice render, URL param read/default/write). Full suite green.
+- [x] Browser-verified — date range + presets, all 5 reports with plausible mock figures,
+      category colours match the palette used elsewhere, dark, mobile (no h-scroll, cards
+      stack, bar chart scrolls), no console errors.
+- [ ] Committed — pending product owner.
+
+`App.tsx`'s `/reports` route now renders `ReportsScreen` in place of the Phase-9
+`<Placeholder>`.

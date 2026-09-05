@@ -10,9 +10,10 @@ export function fmtMinute(m: number): string {
 /** Seconds → "1h 30m" / "45m" / "−20m". */
 export function fmtDuration(seconds: number): string {
   const sign = seconds < 0 ? "−" : "";
-  const s = Math.abs(seconds);
-  const h = Math.floor(s / 3600);
-  const m = Math.round((s % 3600) / 60);
+  // Round to whole minutes first so e.g. 3599s reads "1h 0m", never "0h 60m".
+  const totalMin = Math.round(Math.abs(seconds) / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
   return h === 0 ? `${sign}${m}m` : `${sign}${h}h ${m}m`;
 }
 

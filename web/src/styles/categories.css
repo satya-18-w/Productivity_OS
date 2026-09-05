@@ -1,0 +1,32 @@
+/* ============================================================================
+   Categories — feature styles. Tokens only.
+   A flat, decorative list — no counts, no cross-entity breakdowns (v1.md §2).
+   ========================================================================== */
+
+.category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+.category-list > li:first-child > .category-row { border-top: 0; }
+
+.category-row__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

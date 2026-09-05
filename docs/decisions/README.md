@@ -40,6 +40,10 @@ Do not create an ADR for every tool, dependency, version, or configuration choic
 | [0005](0005-time-and-timezone-model.md) | Time & Timezone Model | Accepted | 2026-09-03 |
 | [0006](0006-frontend-architecture.md) | Frontend Architecture | Accepted | 2026-09-03 |
 | [0007](0007-testing-and-local-development.md) | Testing & Local Development | Accepted | 2026-09-03 |
+| [0009](0009-categories-as-a-shared-module.md) | Categories as a Shared Module | Accepted | 2026-09-04 |
 
 ADR-0008 (production hosting / deployment) is intentionally not yet written — it
 follows a free-tier validation spike.
+
+ADR-0009 opens the design-driven expansion (`planning.md` Appendix A). Further ADRs
+for that expansion (unified scheduled-item model, etc.) are written per milestone.

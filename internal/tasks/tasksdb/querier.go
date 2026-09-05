@@ -11,11 +11,18 @@ import (
 )
 
 type Querier interface {
+	CountAssignableTask(ctx context.Context, arg CountAssignableTaskParams) (int64, error)
+	CountTasksByCategory(ctx context.Context, accountID uuid.UUID) ([]CountTasksByCategoryRow, error)
 	CreateTask(ctx context.Context, arg CreateTaskParams) (CreateTaskRow, error)
 	DeleteTask(ctx context.Context, arg DeleteTaskParams) (int64, error)
+	DoneTaskCountInRange(ctx context.Context, arg DoneTaskCountInRangeParams) (int64, error)
 	GetTaskState(ctx context.Context, arg GetTaskStateParams) (string, error)
 	ListTasks(ctx context.Context, accountID uuid.UUID) ([]ListTasksRow, error)
+	ProgressByGoal(ctx context.Context, accountID uuid.UUID) ([]ProgressByGoalRow, error)
 	RecordTransition(ctx context.Context, arg RecordTransitionParams) error
+	// Every task's own category, for time_blocks that inherit a category from a linked
+	// task (MX-TL). A task with no category is still listed, with a null category_id.
+	TaskCategories(ctx context.Context, accountID uuid.UUID) ([]TaskCategoriesRow, error)
 	UpdateTaskFields(ctx context.Context, arg UpdateTaskFieldsParams) (int64, error)
 	UpdateTaskState(ctx context.Context, arg UpdateTaskStateParams) (int64, error)
 }

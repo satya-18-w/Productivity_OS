@@ -271,9 +271,67 @@ docs/architecture/conventions.md — note web/src/features/ for feature screens
 
 ### Follow-ups (not blockers)
 
-- `SplitButton` for "Add planned / Add actual" (currently one "Add block" with an
-  in-dialog kind toggle).
+- ~~`SplitButton` for "Add planned / Add actual"~~ — done (`components/ui/SplitButton.tsx`).
 - Consider stacking the two lanes vertically on very narrow screens instead of
   horizontal scroll.
 - Legacy `.tl-*` classes in `styles.css` are now unused by any screen — remove at a
   cleanup phase.
+
+---
+
+## Follow-up — Focus timer + Week/Month view switcher (G2, 2026-09-05)
+
+Product owner reversed the V1 exclusion of Timeline Week/Month and a focus timer (see
+`v1.md §4`/`§5` amendments, `design-system.md` G2). Added to this screen:
+
+- [x] **`PomodoroCard`** (`web/src/features/timeline/PomodoroCard.tsx`) — Day view's rail
+      only, matching `references/timeline.png`'s "Focus Mode" widget. Fixed presets
+      (Focus 25m, Short break 5m, Long break 15m), start/pause/reset, SVG ring +
+      countdown. Standalone per the amendment: no persistence, no API calls, never
+      creates/edits a block.
+- [x] View switcher gained **Week** / **Month** (`screens/timeline-week.md`,
+      `screens/timeline-month.md` — each has its own Status section).
+- [x] Date stepper (`components/date/DateStepper.tsx`) gained an optional `onStep`
+      override so Week/Month can step by their own unit (7 days / 1 month) while Day/
+      Agenda and Daily Review keep the default ±1-day behaviour — no duplicate control.
+- [x] Tests — `PomodoroCard` (5), `DateStepper`'s new `onStep` case (1), `TimelineScreen`
+      view-switch + step-unit cases (3). Full suite green.
+- [x] Browser-verified — 1440px and 390px, light theme; no console errors.
+- [ ] Committed — pending product owner.
+
+---
+
+## Follow-up — Task ↔ Time Block linking, Day + Agenda (2026-09-05)
+
+Backend added `time_blocks.task_id` (migration `000014_timeblock_task_link`,
+mutually exclusive with `category_id` via a DB `CHECK`) — see
+`docs/architecture/task-timeblock-model-analysis.md` and `docs/left.md`'s "Task ↔
+Time Block linking" phase for the full history. Frontend wired up against the live,
+verified-stable API:
+
+- [x] `BlockDialog` — a **Task** `<Select>` ("— none (standalone) —" + every task's
+      title). Selecting a task disables the Category field and shows the task's own
+      category read-only ("Inherited from the linked task."); submit sends
+      `task_id` and `category_id: null` together, matching the API's exclusivity
+      rule. Editing a task-linked block shows "Linked to `<task title>` →", a link to
+      `/tasks?openTask=<id>`.
+- [x] `TimelineGrid` (Day) + `AgendaList` (Agenda) — a task-linked block shows
+      "↳ `<task title>`" in place of its (inherited) category name, plus a thicker
+      left border as a structural association cue (no new color — the tint is still
+      the inherited category's). Agenda additionally shows a sibling "Open task →"
+      link per linked row.
+- [x] `TasksScreen` — reads `?openTask=<id>`, opens that task's edit dialog once,
+      then clears the param. The landing point for both links above.
+- [x] Tests — `BlockDialog` (+2: task→category inheritance, edit-mode link),
+      `TimelineScreen`/`WeekView`/`MonthView`/`TimelineGrid`/`AgendaList` factories
+      updated for the new `task_id` field. Full suite green (289 tests).
+- [x] Browser-verified with real data — created a task-linked planned block, saw it
+      render on both Day and Agenda, followed "Open task" to the correct task's edit
+      dialog, reopened the block to see the "Linked to" back-link.
+- [ ] **Not built:** the reverse direction — viewing a Task and seeing its scheduled
+      blocks. No backend endpoint exists to list blocks by task (only per-date and
+      per-range reads); see `docs/left.md` for the specific gap.
+- [ ] Week/Month intentionally left showing category-only (not task-linked) block
+      labels — this pass scoped to Day + Agenda only, per the original Timeline
+      request's explicit view list.
+- [ ] Committed — pending product owner.

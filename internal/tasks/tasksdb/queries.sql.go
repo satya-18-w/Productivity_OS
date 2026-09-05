@@ -12,10 +12,60 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAssignableTask = `-- name: CountAssignableTask :one
+SELECT count(*)
+FROM tasks
+WHERE account_id = $1 AND id = $2
+`
+
+type CountAssignableTaskParams struct {
+	AccountID uuid.UUID
+	ID        uuid.UUID
+}
+
+func (q *Queries) CountAssignableTask(ctx context.Context, arg CountAssignableTaskParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAssignableTask, arg.AccountID, arg.ID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTasksByCategory = `-- name: CountTasksByCategory :many
+SELECT category_id, count(*) AS total
+FROM tasks
+WHERE account_id = $1 AND category_id IS NOT NULL
+GROUP BY category_id
+`
+
+type CountTasksByCategoryRow struct {
+	CategoryID pgtype.UUID
+	Total      int64
+}
+
+func (q *Queries) CountTasksByCategory(ctx context.Context, accountID uuid.UUID) ([]CountTasksByCategoryRow, error) {
+	rows, err := q.db.Query(ctx, countTasksByCategory, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountTasksByCategoryRow{}
+	for rows.Next() {
+		var i CountTasksByCategoryRow
+		if err := rows.Scan(&i.CategoryID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createTask = `-- name: CreateTask :one
-INSERT INTO tasks (account_id, title, description, due_date, state)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, title, description, due_date, state, created_at, updated_at
+INSERT INTO tasks (account_id, title, description, due_date, state, category_id, goal_id, priority)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, title, description, due_date, state, category_id, goal_id, priority, created_at, updated_at
 `
 
 type CreateTaskParams struct {
@@ -24,6 +74,9 @@ type CreateTaskParams struct {
 	Description pgtype.Text
 	DueDate     pgtype.Date
 	State       string
+	CategoryID  pgtype.UUID
+	GoalID      pgtype.UUID
+	Priority    pgtype.Text
 }
 
 type CreateTaskRow struct {
@@ -32,6 +85,9 @@ type CreateTaskRow struct {
 	Description pgtype.Text
 	DueDate     pgtype.Date
 	State       string
+	CategoryID  pgtype.UUID
+	GoalID      pgtype.UUID
+	Priority    pgtype.Text
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -43,6 +99,9 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		arg.Description,
 		arg.DueDate,
 		arg.State,
+		arg.CategoryID,
+		arg.GoalID,
+		arg.Priority,
 	)
 	var i CreateTaskRow
 	err := row.Scan(
@@ -51,6 +110,9 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		&i.Description,
 		&i.DueDate,
 		&i.State,
+		&i.CategoryID,
+		&i.GoalID,
+		&i.Priority,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -75,6 +137,28 @@ func (q *Queries) DeleteTask(ctx context.Context, arg DeleteTaskParams) (int64, 
 	return result.RowsAffected(), nil
 }
 
+const doneTaskCountInRange = `-- name: DoneTaskCountInRange :one
+SELECT count(DISTINCT task_id)
+FROM task_transitions
+WHERE account_id = $1
+  AND to_state = 'DONE'
+  AND at >= $2
+  AND at < $3
+`
+
+type DoneTaskCountInRangeParams struct {
+	AccountID   uuid.UUID
+	FromInstant pgtype.Timestamptz
+	ToInstant   pgtype.Timestamptz
+}
+
+func (q *Queries) DoneTaskCountInRange(ctx context.Context, arg DoneTaskCountInRangeParams) (int64, error) {
+	row := q.db.QueryRow(ctx, doneTaskCountInRange, arg.AccountID, arg.FromInstant, arg.ToInstant)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getTaskState = `-- name: GetTaskState :one
 SELECT state
 FROM tasks
@@ -94,7 +178,7 @@ func (q *Queries) GetTaskState(ctx context.Context, arg GetTaskStateParams) (str
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, title, description, due_date, state, created_at, updated_at
+SELECT id, title, description, due_date, state, category_id, goal_id, priority, created_at, updated_at
 FROM tasks
 WHERE account_id = $1
 ORDER BY created_at DESC, id
@@ -106,6 +190,9 @@ type ListTasksRow struct {
 	Description pgtype.Text
 	DueDate     pgtype.Date
 	State       string
+	CategoryID  pgtype.UUID
+	GoalID      pgtype.UUID
+	Priority    pgtype.Text
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -125,9 +212,45 @@ func (q *Queries) ListTasks(ctx context.Context, accountID uuid.UUID) ([]ListTas
 			&i.Description,
 			&i.DueDate,
 			&i.State,
+			&i.CategoryID,
+			&i.GoalID,
+			&i.Priority,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const progressByGoal = `-- name: ProgressByGoal :many
+SELECT goal_id, count(*) AS total, count(*) FILTER (WHERE state = 'DONE') AS done
+FROM tasks
+WHERE account_id = $1 AND goal_id IS NOT NULL
+GROUP BY goal_id
+`
+
+type ProgressByGoalRow struct {
+	GoalID pgtype.UUID
+	Total  int64
+	Done   int64
+}
+
+func (q *Queries) ProgressByGoal(ctx context.Context, accountID uuid.UUID) ([]ProgressByGoalRow, error) {
+	rows, err := q.db.Query(ctx, progressByGoal, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProgressByGoalRow{}
+	for rows.Next() {
+		var i ProgressByGoalRow
+		if err := rows.Scan(&i.GoalID, &i.Total, &i.Done); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -160,9 +283,42 @@ func (q *Queries) RecordTransition(ctx context.Context, arg RecordTransitionPara
 	return err
 }
 
+const taskCategories = `-- name: TaskCategories :many
+SELECT id, category_id
+FROM tasks
+WHERE account_id = $1
+`
+
+type TaskCategoriesRow struct {
+	ID         uuid.UUID
+	CategoryID pgtype.UUID
+}
+
+// Every task's own category, for time_blocks that inherit a category from a linked
+// task (MX-TL). A task with no category is still listed, with a null category_id.
+func (q *Queries) TaskCategories(ctx context.Context, accountID uuid.UUID) ([]TaskCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, taskCategories, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TaskCategoriesRow{}
+	for rows.Next() {
+		var i TaskCategoriesRow
+		if err := rows.Scan(&i.ID, &i.CategoryID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTaskFields = `-- name: UpdateTaskFields :execrows
 UPDATE tasks
-SET title = $3, description = $4, due_date = $5, updated_at = now()
+SET title = $3, description = $4, due_date = $5, category_id = $6, goal_id = $7, priority = $8, updated_at = now()
 WHERE account_id = $1 AND id = $2
 `
 
@@ -172,6 +328,9 @@ type UpdateTaskFieldsParams struct {
 	Title       string
 	Description pgtype.Text
 	DueDate     pgtype.Date
+	CategoryID  pgtype.UUID
+	GoalID      pgtype.UUID
+	Priority    pgtype.Text
 }
 
 func (q *Queries) UpdateTaskFields(ctx context.Context, arg UpdateTaskFieldsParams) (int64, error) {
@@ -181,6 +340,9 @@ func (q *Queries) UpdateTaskFields(ctx context.Context, arg UpdateTaskFieldsPara
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
+		arg.CategoryID,
+		arg.GoalID,
+		arg.Priority,
 	)
 	if err != nil {
 		return 0, err

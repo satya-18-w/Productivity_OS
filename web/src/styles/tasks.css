@@ -1,0 +1,62 @@
+/* ============================================================================
+   Tasks (list) — feature styles. Tokens only.
+   ========================================================================== */
+
+.tasks-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+@media (max-width: 720px) {
+  .tasks-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .tasks-kpis { grid-template-columns: 1fr; }
+}
+
+.tasks-group + .tasks-group { margin-top: var(--sp-4); }
+
+.task-row__title {
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  text-align: left;
+  padding: 0;
+}
+.task-row__title:hover { color: var(--brand); }
+.ui-row__title--done .task-row__title { color: var(--text-muted); }
+
+.task-row__meta-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.task-row__state {
+  padding: 1px 7px;
+  font-size: 11px;
+}
+.task-row__due {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.task-row__due--overdue { color: var(--danger); font-weight: var(--fw-medium); }
+
+/* right-rail "by status" */
+.tasks-rail__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 2px;
+  font-size: var(--fs-small);
+  border-top: 1px solid var(--border);
+}
+.tasks-rail__row:first-child { border-top: 0; }
+.tasks-rail__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}

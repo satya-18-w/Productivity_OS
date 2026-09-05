@@ -350,6 +350,15 @@ header row: H3 title + a "View all →" link. Right-rail widgets are the compact
   **Tags are not a V1 concept** (a time block has only start / end / category).
 - **Count badge** — small rounded-full number (nav items, column heads, tab labels).
 
+### 4.9a Menu (kebab / actions) — **built** (`components/ui/Menu.tsx`)
+
+A WAI-ARIA menu-button. `trigger` (usually an `IconButton` with `MoreIcon`) is cloned
+with `aria-haspopup="menu"` / `aria-expanded`; `items` is a flat list of
+`{ label, onSelect, danger?, disabled? }` or `{ separator: true }`. Opens on click /
+Enter / Space / ArrowDown; arrow keys move; Enter selects and closes; Esc / outside-click
+close and return focus to the trigger. Used for row actions (Tasks, later Goals/Habits/
+Categories).
+
 ### 4.10 Checkbox / toggle-circle *(partly new)*
 
 - **Checkbox** — rounded square; checked = `--brand`/`--success` fill + white check;
@@ -357,6 +366,15 @@ header row: H3 title + a "View all →" link. Right-rail widgets are the compact
 - **Toggle-circle** *(new)* — circular; used in the habit grid and week strips. Filled
   green check = completed for that date; hollow ring = not. This is the V1 habit
   completion control.
+- **Bug fixed 2026-09-04** (found during a reference-accuracy audit): the decorative ring
+  (`.ui-checkbox__box` / `.ui-toggle-circle__ring` / `.ui-switch__track`+`__thumb`) is an
+  absolutely-positioned sibling painted *after* the real `<input>`, so without
+  `pointer-events: none` it silently sat on top and swallowed every mouse/touch click —
+  the input only ever toggled via keyboard or a wrapping `<label>`. This affected the
+  Tasks row checkbox and every Habit completion toggle (Today/Week views); `Switch` had
+  the same defect but wasn't in use yet. Vitest/RTL didn't catch it because `userEvent`
+  dispatches directly to the target element without real hit-testing. Fixed in
+  `web/src/styles/primitives.css`.
 
 ### 4.11 Progress bar *(new)*
 
@@ -459,6 +477,8 @@ settled; nothing gated on them may be implemented.
 | **D9** | Keep the existing **Inter** font stack. Do not introduce another typeface. | §3.2 |
 | **D10** | **SPA routes ratified**: `/` → Timeline (today) · `/timeline` · `/tasks` (list) · `/board` (Kanban) · `/habits` · `/goals` · `/categories` · `/reports` · `/reviews/daily` · `/reviews/weekly` · `/account` · `/export` · `/login` · `/register`. Tasks and Board are **separate** routes over the same task model. `/` landing is Timeline — **no dashboard** (D7 / §6.4). | `conventions.md` → Frontend, `screens/*.md` route lines |
 | **G1** | **Timeline block geometry (approved 2026-09-04):** blocks are **time-proportional** (height = duration) positioned against a 24-hour axis; two **labelled lanes** (Planned \| Actual). Block fill/border = its **category colour** (VP2); **planned** blocks are dashed-border + lighter fill, **actual** blocks solid — so planned/actual read from lane + line-style, not hue. Midnight-spanning blocks show ▲/▼ markers on the day boundary. Full 00:00–24:00 range, vertically scrollable. | `screens/timeline.md`, existing `.tl-*` in `web/src/styles.css` |
+| **R1** | **Report visualisation (approved 2026-09-04):** time-by-category → horizontal bars (category colour); planned-vs-actual → table (`table.totals`/`.pos`/`.neg`); habit completion → table + `ProgressBar`; task throughput → single `StatCard`; daily actual totals → vertical bar chart, scrollable. No charting library; literal values always shown as text alongside every mark (dataviz skill, P3). | `screens/analytics.md` §"Phase 9", `web/src/features/reports/` |
+| **G2** | **Timeline Week/Month + focus timer (approved 2026-09-05, product owner):** Week and Month join Day/Agenda in the view switcher. **Week** = 7 day-columns (Monday-first, D8), each a chronological stack of that day's blocks (category colour + dashed/solid per G1, not hour-proportional — a week is too dense for that). **Month** = a calendar grid (Monday-first), each day cell a compact list/count of that day's blocks, opening the Day view on click for detail. Neither view adds a KPI row, donut, or any other dashboard widget (§6.4 still excludes those). **Focus timer**: a standalone `Card` in the Day view's rail — preset durations, start/pause, countdown — with no persistence and no link to block data (`v1.md §4`). | `screens/timeline-week.md`, `screens/timeline-month.md`, `web/src/features/timeline/` |
 
 ### 6.2 Pending — do not implement against these
 
@@ -467,7 +487,6 @@ settled; nothing gated on them may be implemented.
 | **D7** | Which screens are in the **V1 frontend**. Governed entirely by `docs/requirements/v1.md` — the reference set does not expand scope. See §6.3 / §6.4. | `docs/requirements/v1.md`; a requirements revision if scope is to change. |
 | **T1** | Precise extraction / ratification of **exact token values** — brand, category, semantic, neutral hues (light + dark), final breakpoint pixel thresholds, and `--sidebar-w` / `--rail-w`. | A dedicated token-extraction pass. Until then, all hex in §3 is direction only. |
 | **C1** | Category **persistence model and detail** — whether a category stores a colour; whether it can be unarchived; whether categories ever attach to entities beyond time blocks; the sidebar "Spaces" concept. | A ratified product requirement. Until then: categories are flat labels on time blocks (§2); "Spaces" is not built. |
-| **R1** | Which visualisation renders each of the five fixed V1 reports (`requirements` §13). | The Reports specification. Screen spec `analytics.md` lists candidates only. |
 
 ### 6.3 V1 screens eligible for implementation (D3 / D10 approved 2026-09-04)
 
@@ -477,6 +496,8 @@ All are governed by `docs/requirements/v1.md`:
 |---|---|---|
 | Timeline — **Day** | `screens/timeline.md` | §3, §4, §5 |
 | Timeline — **Agenda** (single-day list rendering) | `screens/timeline-agenda.md` | §5 (alternate rendering of one day) |
+| Timeline — **Week** (G2, approved 2026-09-05) | `screens/timeline-week.md` | §5 (amended) |
+| Timeline — **Month** (G2, approved 2026-09-05) | `screens/timeline-month.md` | §5 (amended) |
 | **Tasks** (list) | `screens/tasks.md` | §7 |
 | **Board** (Kanban) | reference not provided; requirement §8 | §8 |
 | **Habits** | `screens/habits.md` | §9 |
@@ -497,10 +518,8 @@ build, and do not add affordances for:
 - **Dashboard / home overview** screen (aggregate landing page).
 - **Notes** (feature and screen) — no V1 concept.
 - **Calendar** as a separate feature/screen, and any generic "event" entity.
-- **Timeline Week** and **Timeline Month** views (§5: "one date at a time").
 - **Analytics** beyond the five fixed reports — trend lines, period-over-period deltas,
   "insights", heatmaps as required output, focus-time metrics, per-report export.
-- **Focus / Pomodoro** timer.
 - **Recurring tasks** / any recurrence engine.
 - **Task priorities**, **task tags**, **assignees / collaborators**.
 - **Categories on tasks, habits, or goals**; the **"Spaces"** sidebar switcher.
@@ -511,4 +530,12 @@ build, and do not add affordances for:
 - **Calendar synchronisation / import** (Google Calendar etc.).
 - **Notifications**, reminders, the **notification bell**.
 - **Global search** (the top-bar "Search… ⌘K").
+
+**Timeline Week/Month and a focus timer are no longer on this list** — amended
+2026-09-05 (product owner), see `v1.md §4`/`§5`. They are now approved (G2, §6.1) with
+one caveat carried over unchanged: the **dashboard-style widgets** that surround them in
+the references (KPI/sparkline rows, donuts, "Insights", "Upcoming Events", Weekly
+Goals/Habit-Tracker cross-widgets) are **still excluded**, for the reasons already given
+above (P3, P6, VP3) — this amendment reopens only the timeline-of-blocks rendering and
+the standalone timer, not the wider dashboard aesthetic.
 - Motivational **scoring / badges / gamification**.

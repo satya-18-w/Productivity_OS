@@ -11,16 +11,20 @@ import (
 )
 
 type Querier interface {
-	ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (int64, error)
-	CountAssignableCategory(ctx context.Context, arg CountAssignableCategoryParams) (int64, error)
-	CreateCategory(ctx context.Context, arg CreateCategoryParams) (CreateCategoryRow, error)
+	CountBlocksByCategory(ctx context.Context, accountID uuid.UUID) ([]CountBlocksByCategoryRow, error)
+	// A task-linked block's own category_id is always null (CHECK constraint); this
+	// powers the inherited-category count so a task-linked block still contributes to
+	// its (inherited) category's total in the categories overview (MX-TL).
+	CountBlocksByTask(ctx context.Context, accountID uuid.UUID) ([]CountBlocksByTaskRow, error)
 	CreateTimeBlock(ctx context.Context, arg CreateTimeBlockParams) (CreateTimeBlockRow, error)
 	DeleteTimeBlock(ctx context.Context, arg DeleteTimeBlockParams) (int64, error)
-	GetCategory(ctx context.Context, arg GetCategoryParams) (GetCategoryRow, error)
 	GetTimeBlock(ctx context.Context, arg GetTimeBlockParams) (GetTimeBlockRow, error)
-	ListActiveCategories(ctx context.Context, accountID uuid.UUID) ([]ListActiveCategoriesRow, error)
+	// Every planned and actual block, unbounded, for M8 export completeness.
+	ListAllBlocks(ctx context.Context, accountID uuid.UUID) ([]ListAllBlocksRow, error)
+	// Every block (planned and actual, across any date) linked to one task —
+	// v1.md §7's "see all of a task's linked time blocks" (reverse of task_id).
+	ListBlocksByTask(ctx context.Context, arg ListBlocksByTaskParams) ([]ListBlocksByTaskRow, error)
 	ListBlocksOverlapping(ctx context.Context, arg ListBlocksOverlappingParams) ([]ListBlocksOverlappingRow, error)
-	RenameCategory(ctx context.Context, arg RenameCategoryParams) (int64, error)
 	UpdateTimeBlock(ctx context.Context, arg UpdateTimeBlockParams) (int64, error)
 }
 

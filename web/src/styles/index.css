@@ -9,4 +9,11 @@
 @import "../styles.css";      /* legacy feature/component CSS — being migrated */
 @import "./primitives.css";
 @import "../shell/shell.css";     /* app shell (D3) */
-@import "./timeline.css";         /* Timeline (Day) feature */
+@import "./timeline.css";         /* Timeline feature */
+@import "./tasks.css";            /* Tasks feature */
+@import "./board.css";            /* Board (Kanban) feature */
+@import "./habits.css";           /* Habits feature */
+@import "./goals.css";            /* Goals feature */
+@import "./categories.css";       /* Categories feature */
+@import "./reports.css";          /* Reports feature */
+@import "./reviews.css";          /* Daily / Weekly Review */

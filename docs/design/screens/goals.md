@@ -77,3 +77,37 @@ bars, task counts, categories, milestones, "On Track/At Risk".
 §4.9 status chip · §4.12 donut · §4.16 create/edit form · existing `.goal-*` /
 `.progress-*` classes in `web/src/styles.css` · `requirements` §10 ·
 `visual-principles.md` VP3, VP7, VP10.
+
+---
+
+## Phase 7 — Goals — Status: ✅ COMPLETE (2026-09-04)
+
+Route `/goals` → `GoalsScreen` (`web/src/features/goals/`). Backend fully built:
+`api.goals`, `createGoal`, `updateGoal`, `setGoalProgress`, `deleteGoal` — no mock data,
+no `docs/left.md` entries needed for this screen.
+
+- [x] `PageHeader` + **New goal** primary. `GoalDialog` = **title / description / target
+      date only** — no % / status / linked-tasks field (asserted absent in tests).
+- [x] **`StatusBadge` migrated to the API's uppercase `GoalProgress`**
+      (`NOT_STARTED`/`IN_PROGRESS`/`ACHIEVED`/`ABANDONED`) so screens use the domain
+      values directly — no lowercase↔uppercase mapping layer. Labels verbatim from §10.
+- [x] Filter (`SegmentedControl`, `?filter=`): All / Not started / In progress / Achieved
+      / Abandoned — **by state, not category** (goals carry no category, §10).
+- [x] KPI row: Total / In progress / Achieved / Not started — **no** donut (deferred,
+      chart choices wait for R1), no percentage anywhere.
+- [x] **Flat list** (newest-first) — `GoalRow`: title (→ edit), description, `StatusBadge`,
+      target-date chip (`--danger` + "· past due" when unfinished and past target),
+      kebab `Menu` (Edit · Set to <other 3 states> · Delete). **No** progress bar, no
+      "X/Y tasks", no category chip, no milestones.
+- [x] Rail: compact "By status" count list (consistent with Tasks/Habits pattern).
+- [x] Responsive — KPI 4→2→1; no page h-scroll. Light + dark verified.
+- [x] Tests — `goalHelpers` (3, pure), `GoalRow` (5, incl. no-%/no-progress-bar
+      assertion), `GoalDialog` (3), `GoalsScreen` (6). Full suite green (162 tests).
+- [x] Browser-verified — 5 fixture goals across all four states, correct sort/filter/KPIs,
+      kebab excludes current state, dialog fields, dark, mobile; no console errors.
+- [ ] Committed — pending product owner.
+
+Old `web/src/pages/Goals.tsx` deleted.
+
+### Deferred
+Donut-by-state in the rail (kept a plain count list — R1 decides chart form later).

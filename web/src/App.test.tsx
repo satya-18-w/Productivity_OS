@@ -7,10 +7,10 @@ import { mockViewport } from "./test/mockViewport";
 
 // Keep routing tests hermetic — stub the screens that would hit the API on mount.
 vi.mock("./features/timeline", () => ({ TimelineScreen: () => <h1>Timeline page</h1> }));
-vi.mock("./pages/Board", () => ({ Board: () => <h1>Board page</h1> }));
-vi.mock("./pages/Habits", () => ({ Habits: () => <h1>Habits page</h1> }));
-vi.mock("./pages/Goals", () => ({ Goals: () => <h1>Goals page</h1> }));
-vi.mock("./pages/Categories", () => ({ Categories: () => <h1>Categories page</h1> }));
+vi.mock("./features/board", () => ({ BoardScreen: () => <h1>Board page</h1> }));
+vi.mock("./features/habits", () => ({ HabitsScreen: () => <h1>Habits page</h1> }));
+vi.mock("./features/goals", () => ({ GoalsScreen: () => <h1>Goals page</h1> }));
+vi.mock("./features/categories", () => ({ CategoriesScreen: () => <h1>Categories page</h1> }));
 vi.mock("./pages/Account", () => ({ Account: () => <h1>Account page</h1> }));
 
 function renderApp(route: string, account: { email: string; timezone: string } | null = { email: "a@b.co", timezone: "UTC" }) {

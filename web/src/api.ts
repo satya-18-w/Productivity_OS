@@ -19,8 +19,13 @@ export interface Block {
   kind: BlockKind;
   starts_at: string;
   ends_at: string;
+  /** For a task-linked block this is the task's own category, resolved
+   * server-side — never the block's, since a block can't carry both (MX-TL). */
   category_id: string | null;
   category_name?: string | null;
+  /** Optional link to a task (MX-TL). Mutually exclusive with category_id at
+   * the point of creation/edit — the API rejects sending both. */
+  task_id: string | null;
 }
 
 export interface PositionedBlock extends Block {
@@ -39,6 +44,19 @@ export interface DayTimeline {
   planned: PositionedBlock[];
   actual: PositionedBlock[];
 }
+
+export interface RangeTimeline {
+  from: string;
+  to: string;
+  days: DayTimeline[];
+}
+
+/** A block linked to a task, as returned by `GET /api/tasks/{id}/blocks` — the
+ * plain `Block` shape (raw UTC `starts_at`/`ends_at`, no pre-resolved local
+ * date/time fields, unlike `PositionedBlock`). Display code must convert via
+ * `utcInZone` (`components/date/dateUtils.ts`) using the account's own
+ * timezone — see that function's doc comment and `docs/left.md`. */
+export type TaskLinkedBlock = Block;
 
 export interface ComparisonRow {
   category_id: string | null;
@@ -59,7 +77,9 @@ export interface NewBlock {
   start: string;
   end: string;
   ends_next_day: boolean;
+  /** Exactly one of category_id / task_id may be set — never both. */
   category_id: string | null;
+  task_id: string | null;
 }
 
 export type TaskState = "BACKLOG" | "TODO" | "IN_PROGRESS" | "DONE";
@@ -70,6 +90,9 @@ export interface Task {
   description: string;
   due_date: string | null;
   state: TaskState;
+  /** Optional category (ADR-0009). No `category_name` from the API — resolve
+   * against `api.listCategories()`, same as every other category-bearing entity. */
+  category_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +110,7 @@ export interface NewTask {
   title: string;
   description: string;
   due_date: string | null;
+  category_id: string | null;
 }
 
 export interface HabitView {
@@ -193,11 +217,20 @@ export const api = {
 
   timeline: (date: string) =>
     request<DayTimeline>("GET", `/api/timeline?date=${encodeURIComponent(date)}`),
+  timelineRange: (from: string, to: string) =>
+    request<RangeTimeline>(
+      "GET",
+      `/api/timeline/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    ),
   comparison: (date: string) =>
     request<DayComparison>("GET", `/api/comparison?date=${encodeURIComponent(date)}`),
   createBlock: (b: NewBlock) => request<Block>("POST", "/api/blocks", b),
   updateBlock: (id: string, b: NewBlock) => request<void>("PUT", `/api/blocks/${id}`, b),
   deleteBlock: (id: string) => request<void>("DELETE", `/api/blocks/${id}`),
+  blocksForTask: (taskId: string) =>
+    request<{ blocks: TaskLinkedBlock[] }>("GET", `/api/tasks/${encodeURIComponent(taskId)}/blocks`).then(
+      (r) => r.blocks,
+    ),
 
   board: () => request<Board>("GET", "/api/board"),
   createTask: (t: NewTask) => request<Task>("POST", "/api/tasks", t),

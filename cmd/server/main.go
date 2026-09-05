@@ -14,12 +14,17 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/satya-18-w/productivity-os/internal/account"
+	"github.com/satya-18-w/productivity-os/internal/categories"
+	"github.com/satya-18-w/productivity-os/internal/export"
 	"github.com/satya-18-w/productivity-os/internal/goals"
 	"github.com/satya-18-w/productivity-os/internal/habits"
+	"github.com/satya-18-w/productivity-os/internal/notes"
 	"github.com/satya-18-w/productivity-os/internal/platform/config"
 	"github.com/satya-18-w/productivity-os/internal/platform/httpx"
 	"github.com/satya-18-w/productivity-os/internal/platform/postgres"
 	"github.com/satya-18-w/productivity-os/internal/platform/timezone"
+	"github.com/satya-18-w/productivity-os/internal/reports"
+	"github.com/satya-18-w/productivity-os/internal/reviews"
 	"github.com/satya-18-w/productivity-os/internal/tasks"
 	"github.com/satya-18-w/productivity-os/internal/timeline"
 	"github.com/satya-18-w/productivity-os/web"
@@ -74,10 +79,34 @@ func run() error {
 		return accountHandler.RequireAuth(fn)
 	}
 	zone := accountZone{accountSvc}
-	timeline.NewHandler(timeline.NewService(pool, zone), zone).Mount(mux, write, read)
-	tasks.NewHandler(tasks.NewService(pool)).Mount(mux, write, read)
-	habits.NewHandler(habits.NewService(pool, zone), zone).Mount(mux, write, read)
-	goals.NewHandler(goals.NewService(pool)).Mount(mux, write, read)
+	categorySvc := categories.NewService(pool)
+	categories.NewHandler(categorySvc).Mount(mux, write, read)
+
+	goalsSvc := goals.NewService(pool, categorySvc)
+	tasksSvc := tasks.NewService(pool, categorySvc, goalsSvc)
+	goals.NewHandler(goalsSvc, tasksSvc).Mount(mux, write, read)
+	tasks.NewHandler(tasksSvc, zone).Mount(mux, write, read)
+
+	timelineSvc := timeline.NewService(pool, zone, categorySvc, tasksSvc)
+	timeline.NewHandler(timelineSvc, zone).Mount(mux, write, read)
+
+	habitsSvc := habits.NewService(pool, zone, categorySvc)
+	habits.NewHandler(habitsSvc, zone).Mount(mux, write, read)
+
+	reviewsSvc := reviews.NewService(pool)
+	reviews.NewHandler(reviewsSvc).Mount(mux, write, read)
+
+	notesSvc := notes.NewService(pool)
+	notes.NewHandler(notesSvc).Mount(mux, write, read)
+
+	reportsSvc := reports.NewService(timelineSvc, habitsSvc, tasksSvc, zone)
+	reports.NewHandler(reportsSvc).Mount(mux, read)
+
+	exportSvc := export.NewService(categorySvc, timelineSvc, tasksSvc, habitsSvc, goalsSvc, reviewsSvc, notesSvc)
+	export.NewHandler(exportSvc).Mount(mux, read)
+
+	mux.Handle("GET /api/categories/overview",
+		read(categoriesOverviewHandler(categorySvc, tasksSvc, habitsSvc, goalsSvc, timelineSvc)))
 
 	// Everything not matched above is the frontend (client-side routing).
 	if bundle, ok := web.Bundle(); ok {

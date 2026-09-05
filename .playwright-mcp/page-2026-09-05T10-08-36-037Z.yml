@@ -1,0 +1,128 @@
+- generic [ref=f1e33]:
+  - link "Skip to content" [ref=f1e34] [cursor=pointer]:
+    - /url: "#main"
+  - complementary [ref=f1e35]:
+    - link "Productivity OS — home" [ref=f1e36] [cursor=pointer]:
+      - /url: /
+      - generic [ref=f1e40]: Productivity OS
+    - navigation "Primary" [ref=f1e41]:
+      - link "Timeline" [ref=f1e42] [cursor=pointer]:
+        - /url: /timeline
+      - link "Tasks" [ref=f1e49] [cursor=pointer]:
+        - /url: /tasks
+      - link "Board" [ref=f1e54] [cursor=pointer]:
+        - /url: /board
+      - link "Habits" [ref=f1e59] [cursor=pointer]:
+        - /url: /habits
+      - link "Goals" [ref=f1e66] [cursor=pointer]:
+        - /url: /goals
+      - link "Categories" [ref=f1e72] [cursor=pointer]:
+        - /url: /categories
+      - link "Reports" [ref=f1e77] [cursor=pointer]:
+        - /url: /reports
+      - link "Reviews" [ref=f1e82] [cursor=pointer]:
+        - /url: /reviews/daily
+    - generic [ref=f1e88]:
+      - generic [ref=f1e89]:
+        - generic [ref=f1e90]: Theme
+        - radiogroup "Theme" [ref=f1e91]:
+          - radio "Light" [ref=f1e92] [cursor=pointer]
+          - radio "Dark" [ref=f1e96] [cursor=pointer]
+          - radio "System" [checked] [ref=f1e99] [cursor=pointer]
+      - button "timeline-remediation-qa@example.com" [ref=f1e104] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f1e105]: ti
+  - main [ref=f1e107]:
+    - generic [ref=f1e108]:
+      - generic [ref=f1e109]:
+        - generic [ref=f1e110]:
+          - generic [ref=f1e111]:
+            - generic [ref=f1e112]:
+              - generic [ref=f1e113]: Timeline
+              - heading "Saturday, September 5, 2026" [level=1] [ref=f1e114]
+            - generic [ref=f1e116]:
+              - button "Add block" [ref=f1e117] [cursor=pointer]
+              - button "Add block, more actions" [ref=f1e119] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f1e120]: ▾
+          - paragraph [ref=f1e121]: Plan the day as time blocks and log what actually happened.
+        - generic [ref=f1e122]:
+          - radiogroup "Timeline view" [ref=f1e123]:
+            - radio "Day" [checked] [ref=f1e124] [cursor=pointer]
+            - radio "Agenda" [ref=f1e125] [cursor=pointer]
+            - radio "Week" [ref=f1e126] [cursor=pointer]
+            - radio "Month" [ref=f1e127] [cursor=pointer]
+          - generic [ref=f1e128]:
+            - button "Previous day" [ref=f1e129] [cursor=pointer]
+            - textbox "Date" [ref=f1e132]: 2026-09-05
+            - button "Next day" [ref=f1e133] [cursor=pointer]
+            - button "Today" [disabled] [ref=f1e136]
+        - paragraph [ref=f1e137]: Loading…
+      - complementary "Timeline calendar and tasks" [ref=f1e138]:
+        - group "Choose a date" [ref=f1e140]:
+          - generic [ref=f1e141]:
+            - button "Previous month" [ref=f1e142] [cursor=pointer]
+            - generic [ref=f1e145]: September 2026
+            - button "Next month" [ref=f1e146] [cursor=pointer]
+          - generic [aria-hidden] [ref=f1e149]:
+            - generic [ref=f1e150]: Mon
+            - generic [ref=f1e151]: Tue
+            - generic [ref=f1e152]: Wed
+            - generic [ref=f1e153]: Thu
+            - generic [ref=f1e154]: Fri
+            - generic [ref=f1e155]: Sat
+            - generic [ref=f1e156]: Sun
+          - generic [ref=f1e157]:
+            - button "Monday, August 31, 2026" [ref=f1e158] [cursor=pointer]: "31"
+            - button "Tuesday, September 1, 2026" [ref=f1e159] [cursor=pointer]: "1"
+            - button "Wednesday, September 2, 2026" [ref=f1e160] [cursor=pointer]: "2"
+            - button "Thursday, September 3, 2026" [ref=f1e161] [cursor=pointer]: "3"
+            - button "Friday, September 4, 2026" [ref=f1e162] [cursor=pointer]: "4"
+            - button "Saturday, September 5, 2026" [pressed] [ref=f1e163] [cursor=pointer]: "5"
+            - button "Sunday, September 6, 2026" [ref=f1e164] [cursor=pointer]: "6"
+            - button "Monday, September 7, 2026" [ref=f1e165] [cursor=pointer]: "7"
+            - button "Tuesday, September 8, 2026" [ref=f1e166] [cursor=pointer]: "8"
+            - button "Wednesday, September 9, 2026" [ref=f1e167] [cursor=pointer]: "9"
+            - button "Thursday, September 10, 2026" [ref=f1e168] [cursor=pointer]: "10"
+            - button "Friday, September 11, 2026" [ref=f1e169] [cursor=pointer]: "11"
+            - button "Saturday, September 12, 2026" [ref=f1e170] [cursor=pointer]: "12"
+            - button "Sunday, September 13, 2026" [ref=f1e171] [cursor=pointer]: "13"
+            - button "Monday, September 14, 2026" [ref=f1e172] [cursor=pointer]: "14"
+            - button "Tuesday, September 15, 2026" [ref=f1e173] [cursor=pointer]: "15"
+            - button "Wednesday, September 16, 2026" [ref=f1e174] [cursor=pointer]: "16"
+            - button "Thursday, September 17, 2026" [ref=f1e175] [cursor=pointer]: "17"
+            - button "Friday, September 18, 2026" [ref=f1e176] [cursor=pointer]: "18"
+            - button "Saturday, September 19, 2026" [ref=f1e177] [cursor=pointer]: "19"
+            - button "Sunday, September 20, 2026" [ref=f1e178] [cursor=pointer]: "20"
+            - button "Monday, September 21, 2026" [ref=f1e179] [cursor=pointer]: "21"
+            - button "Tuesday, September 22, 2026" [ref=f1e180] [cursor=pointer]: "22"
+            - button "Wednesday, September 23, 2026" [ref=f1e181] [cursor=pointer]: "23"
+            - button "Thursday, September 24, 2026" [ref=f1e182] [cursor=pointer]: "24"
+            - button "Friday, September 25, 2026" [ref=f1e183] [cursor=pointer]: "25"
+            - button "Saturday, September 26, 2026" [ref=f1e184] [cursor=pointer]: "26"
+            - button "Sunday, September 27, 2026" [ref=f1e185] [cursor=pointer]: "27"
+            - button "Monday, September 28, 2026" [ref=f1e186] [cursor=pointer]: "28"
+            - button "Tuesday, September 29, 2026" [ref=f1e187] [cursor=pointer]: "29"
+            - button "Wednesday, September 30, 2026" [ref=f1e188] [cursor=pointer]: "30"
+            - button "Thursday, October 1, 2026" [ref=f1e189] [cursor=pointer]: "1"
+            - button "Friday, October 2, 2026" [ref=f1e190] [cursor=pointer]: "2"
+            - button "Saturday, October 3, 2026" [ref=f1e191] [cursor=pointer]: "3"
+            - button "Sunday, October 4, 2026" [ref=f1e192] [cursor=pointer]: "4"
+            - button "Monday, October 5, 2026" [ref=f1e193] [cursor=pointer]: "5"
+            - button "Tuesday, October 6, 2026" [ref=f1e194] [cursor=pointer]: "6"
+            - button "Wednesday, October 7, 2026" [ref=f1e195] [cursor=pointer]: "7"
+            - button "Thursday, October 8, 2026" [ref=f1e196] [cursor=pointer]: "8"
+            - button "Friday, October 9, 2026" [ref=f1e197] [cursor=pointer]: "9"
+            - button "Saturday, October 10, 2026" [ref=f1e198] [cursor=pointer]: "10"
+            - button "Sunday, October 11, 2026" [ref=f1e199] [cursor=pointer]: "11"
+        - generic [ref=f1e200]:
+          - heading "Focus timer" [level=2] [ref=f1e201]
+          - radiogroup "Session type" [ref=f1e202]:
+            - radio "Focus" [checked] [ref=f1e203] [cursor=pointer]
+            - radio "Short break" [ref=f1e204] [cursor=pointer]
+            - radio "Long break" [ref=f1e205] [cursor=pointer]
+          - generic [ref=f1e206]:
+            - img "25:00 remaining" [ref=f1e207]
+            - generic [aria-hidden] [ref=f1e210]: 25:00
+          - generic [ref=f1e211]:
+            - button "Reset" [disabled] [ref=f1e212]
+            - button "Start" [ref=f1e213] [cursor=pointer]
+          - paragraph [ref=f1e214]: A standalone timer — it doesn't log a time block.

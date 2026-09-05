@@ -1,0 +1,82 @@
+/* ============================================================================
+   Goals — feature styles. Tokens only.
+   Flat list; four manual progress states; NO %, NO progress bars (v1.md §10).
+   ========================================================================== */
+
+.goals-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+@media (max-width: 720px) {
+  .goals-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .goals-kpis { grid-template-columns: 1fr; }
+}
+
+.goal-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.goal-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-1);
+  border-top: 1px solid var(--border);
+}
+.goal-row:first-child { border-top: 0; }
+
+.goal-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.goal-row__title {
+  align-self: flex-start;
+  padding: 0;
+  text-align: left;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.goal-row__title:hover { color: var(--brand); }
+.goal-row__desc {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+.goal-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.goal-row__target {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.goal-row__target--overdue { color: var(--danger); font-weight: var(--fw-medium); }
+
+/* right-rail "by status" */
+.goals-rail__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-1);
+  font-size: var(--fs-small);
+  border-top: 1px solid var(--border);
+}
+.goals-rail__row:first-child { border-top: 0; }
+.goals-rail__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}

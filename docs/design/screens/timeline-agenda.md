@@ -103,3 +103,43 @@ Built as a view of the shared **`TimelineScreen`** (`?view=agenda`), alongside D
   Day — simpler, consistent).
 - `list | grid` toggle (reference-only affordance, no V1 need).
 - Multi-select category filter (single-select is enough for a single day).
+
+---
+
+## Reference-accuracy audit — 2026-09-04
+
+Re-checked against all four Timeline reference images (`timeline.png`,
+`timeline-agenda.png`, `timeline-week.png`, `timeline-month.png`) at the product owner's
+request. Confirmed with the product owner first: Week/Month and every dashboard-style
+widget that appears only in them (KPI/sparkline row, donut, "Insights", "Upcoming
+Events") **stay excluded** (`design-system.md §6.4`) — this audit only touches the
+in-scope Day + Agenda views.
+
+- [x] Agenda rows had no visual link to the Day grid's category colouring — a bare 9px dot
+      was the only category cue, while Day-view blocks are tinted + bordered in the
+      category colour. Added the same restrained tint (`color-mix` 6%) + a category-colour
+      left border to `.agenda__row`, so the two views read as one system.
+- [x] The reference's agenda rows sit on a continuous vertical rail through the time dots;
+      ours had none. Added `.agenda__rail` (a per-row line segment that joins at the shared
+      row border, hidden on the `<480px` wrapped layout where it no longer lines up).
+- [x] **Bug found, not a reference gap:** the Day grid's "now" line never showed its time
+      label (`10:24`-style pill in the reference) — `.tl2__lane:first-of-type` doesn't
+      match what's actually the *fifth* `<div>` child of `.tl2__grid` (`:first-of-type`
+      matches by tag, not class), so the rule never fired. Fixed by giving `Lane` an
+      explicit `tl2__lane--planned`/`--actual` class and retargeting the selector.
+- [x] Confirmed still correctly excluded, no action: per-row leading icon (would need an
+      icon-per-category field, not part of the V1 category model — tied to open item C1),
+      MiniCalendar day-activity dots (would need a new month-activity read, decorative
+      only — not worth a new endpoint for this), the header's greeting/date-line ordering
+      (ours is eyebrow=screen/title=date, consistently used by every V1 screen — changing
+      it here would break that convention, not fix it), checkboxes/tags/avatars/priorities/
+      donut/"Top Priorities"/search/notifications/Spaces sidebar (all separately excluded,
+      §6.4).
+- [x] Verified — 210 tests green (full suite), typecheck/build clean, browser-verified
+      desktop/mobile/light/dark with real fixture data; no console errors.
+
+**Unrelated but significant, found in the same pass:** the shared `Checkbox` /
+`ToggleCircle` / `Switch` primitives had a real click-target bug (decorative ring painted
+over the input, swallowing every mouse/touch click) — see `design-system.md §4.10` for the
+detail. Fixed in the same change; it affects Tasks and Habits, not Timeline, but is
+recorded here because this audit is what surfaced it.

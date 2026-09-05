@@ -23,6 +23,17 @@ type Category struct {
 	Name       string
 	ArchivedAt pgtype.Timestamptz
 	CreatedAt  pgtype.Timestamptz
+	Colour     pgtype.Text
+	Icon       pgtype.Text
+}
+
+type DailyReview struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+	OnDate    pgtype.Date
+	Answers   []byte
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type Goal struct {
@@ -34,6 +45,7 @@ type Goal struct {
 	Progress    string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	CategoryID  pgtype.UUID
 }
 
 type Habit struct {
@@ -42,6 +54,8 @@ type Habit struct {
 	Name       string
 	ArchivedAt pgtype.Timestamptz
 	CreatedAt  pgtype.Timestamptz
+	CategoryID pgtype.UUID
+	Target     pgtype.Text
 }
 
 type HabitCompletion struct {
@@ -50,6 +64,15 @@ type HabitCompletion struct {
 	AccountID uuid.UUID
 	OnDate    pgtype.Date
 	CreatedAt pgtype.Timestamptz
+}
+
+type Note struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+	Title     string
+	Body      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type Session struct {
@@ -69,6 +92,9 @@ type Task struct {
 	State       string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	CategoryID  pgtype.UUID
+	GoalID      pgtype.UUID
+	Priority    pgtype.Text
 }
 
 type TaskTransition struct {
@@ -88,4 +114,15 @@ type TimeBlock struct {
 	EndsAt     pgtype.Timestamptz
 	CategoryID pgtype.UUID
 	CreatedAt  pgtype.Timestamptz
+	TaskID     pgtype.UUID
+}
+
+type WeeklyReview struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+	IsoYear   int32
+	IsoWeek   int32
+	Answers   []byte
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }

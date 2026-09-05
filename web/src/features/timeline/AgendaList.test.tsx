@@ -7,7 +7,7 @@ import type { PositionedBlock } from "../../api";
 function b(over: Partial<PositionedBlock>): PositionedBlock {
   return {
     id: "x", kind: "planned", starts_at: "", ends_at: "", category_id: "c1",
-    category_name: "Deep Work", start_minute: 540, end_minute: 660,
+    category_name: "Deep Work", task_id: null, start_minute: 540, end_minute: 660,
     from_prev_day: false, to_next_day: false, local_date: "2026-09-04",
     local_start: "09:00", local_end: "11:00", ends_next_day: false, ...over,
   };
@@ -57,5 +57,18 @@ describe("AgendaList", () => {
   it("shows an empty state with no blocks", () => {
     render(<AgendaList planned={[]} actual={[]} now={null} onPick={() => {}} />);
     expect(screen.getByText("Nothing scheduled")).toBeDefined();
+  });
+
+  it("offers an add affordance that calls onAdd", async () => {
+    const onAdd = vi.fn();
+    render(<AgendaList planned={PLANNED} actual={ACTUAL} now={null} onPick={() => {}} onAdd={onAdd} />);
+    // The "+" is aria-hidden (decorative), so it's excluded from the accessible name.
+    await userEvent.click(screen.getByRole("button", { name: "Add an agenda item" }));
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the add affordance when onAdd is not provided", () => {
+    render(<AgendaList planned={PLANNED} actual={ACTUAL} now={null} onPick={() => {}} />);
+    expect(screen.queryByRole("button", { name: /Add an agenda item/ })).toBeNull();
   });
 });

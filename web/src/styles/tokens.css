@@ -79,6 +79,7 @@
   --info-soft: #e7effd;
   --goal: #8b5cf6;            /* goal accent (violet) */
   --goal-soft: #efe9fd;
+  --streak: #f0642f;          /* V1 current-streak accent only — NOT a motivational device (design-system.md §3.1) */
 
   /* focus ring — brand (VP8) */
   --focus: var(--brand);
@@ -141,6 +142,7 @@
     --info-soft: #14243c;
     --goal: #a78bfa;
     --goal-soft: #201a3a;
+    --streak: #f5854f;
 
     --cat-personal: #ec7fa9;
     --cat-work: #5b9bf8;
@@ -185,6 +187,7 @@
   --info-soft: #14243c;
   --goal: #a78bfa;
   --goal-soft: #201a3a;
+  --streak: #f5854f;
 
   --cat-personal: #ec7fa9;
   --cat-work: #5b9bf8;

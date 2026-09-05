@@ -161,3 +161,29 @@ export const DownloadIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
   </svg>
 );
+
+export const MoreIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base} {...p} strokeWidth={2.5}>
+    <path d="M12 6h.01M12 12h.01M12 18h.01" />
+  </svg>
+);
+
+export const CalendarIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base} {...p} strokeWidth={1.9}>
+    <rect x="3" y="4" width="18" height="17" rx="2" />
+    <path d="M3 9h18M8 2v4M16 2v4" />
+  </svg>
+);
+
+export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base} {...p} strokeWidth={2.2}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+export const FlameIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" {...p}>
+    <path d="M12 2c1 3 4 4.5 4 8a4 4 0 0 1-1.2 2.9c.1-.6.2-1.3.2-1.9 0-2-1.5-3.3-2.3-4.5-.6 1.3-2.1 2.2-2.9 3.6-.5.9-.8 1.9-.8 2.9 0 .7.1 1.4.4 2A4 4 0 0 1 6 13c0-4.5 4-6 6-11z" />
+    <path d="M12 22a4 4 0 0 0 4-4c0-2-1.4-3-2.4-4.3-.7 1-2 1.7-2 3.3 0 .6.2 1.1.5 1.6A2 2 0 0 1 9.6 17c0-1.4 1-2.3 1.6-3.4C11.9 15 14 16 12 22z" />
+  </svg>
+);

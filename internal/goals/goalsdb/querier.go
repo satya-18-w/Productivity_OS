@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	CountAssignableGoal(ctx context.Context, arg CountAssignableGoalParams) (int64, error)
+	CountGoalsByCategory(ctx context.Context, accountID uuid.UUID) ([]CountGoalsByCategoryRow, error)
 	CreateGoal(ctx context.Context, arg CreateGoalParams) (CreateGoalRow, error)
 	DeleteGoal(ctx context.Context, arg DeleteGoalParams) (int64, error)
 	ListGoals(ctx context.Context, accountID uuid.UUID) ([]ListGoalsRow, error)
